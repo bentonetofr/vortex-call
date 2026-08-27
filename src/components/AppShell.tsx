@@ -40,6 +40,7 @@ export function AppShell({ member }: AppShellProps) {
         onSelectChannel={setActiveChannelId}
         activeVoiceChannelId={voiceCall.activeChannelId}
         voicePeers={voiceCall.peers}
+        localAudioStream={voiceCall.localAudioStream}
         onJoinVoice={handleOpenVoice}
         micEnabled={voiceCall.micEnabled}
         mediaMode={voiceCall.mediaMode}
@@ -60,6 +61,7 @@ export function AppShell({ member }: AppShellProps) {
             isConnected={voiceCall.activeChannelId === activeChannel.id}
             onJoin={() => voiceCall.join(activeChannel.id)}
             localVideoStream={voiceCall.localVideoStream}
+            localAudioStream={voiceCall.localAudioStream}
             mediaMode={voiceCall.mediaMode}
             micEnabled={voiceCall.micEnabled}
             peers={voiceCall.peers}

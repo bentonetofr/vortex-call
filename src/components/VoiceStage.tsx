@@ -5,12 +5,20 @@ import { ParticipantTile } from "./ParticipantTile";
 interface VoiceStageProps {
   currentMember: Member;
   localVideoStream: MediaStream | null;
+  localAudioStream: MediaStream | null;
   localMode: MediaMode;
   micEnabled: boolean;
   peers: Record<string, PeerCallState>;
 }
 
-export function VoiceStage({ currentMember, localVideoStream, localMode, micEnabled, peers }: VoiceStageProps) {
+export function VoiceStage({
+  currentMember,
+  localVideoStream,
+  localAudioStream,
+  localMode,
+  micEnabled,
+  peers,
+}: VoiceStageProps) {
   const peerList = Object.entries(peers);
 
   return (
@@ -19,6 +27,7 @@ export function VoiceStage({ currentMember, localVideoStream, localMode, micEnab
         name={`${currentMember.name} (você)`}
         color={currentMember.color}
         videoStream={localVideoStream}
+        audioStream={localAudioStream}
         micEnabled={micEnabled}
         isScreen={localMode === "screen"}
         muted
@@ -29,6 +38,7 @@ export function VoiceStage({ currentMember, localVideoStream, localMode, micEnab
           name={peer.name}
           color={peer.color}
           videoStream={peer.videoStream}
+          audioStream={peer.audioStream}
           micEnabled={peer.micEnabled}
           isScreen={peer.mediaMode === "screen"}
         />

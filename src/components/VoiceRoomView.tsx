@@ -13,6 +13,7 @@ interface VoiceRoomViewProps {
   isConnected: boolean;
   onJoin: () => void;
   localVideoStream: MediaStream | null;
+  localAudioStream: MediaStream | null;
   mediaMode: MediaMode;
   micEnabled: boolean;
   peers: Record<string, PeerCallState>;
@@ -27,6 +28,7 @@ export function VoiceRoomView({
   isConnected,
   onJoin,
   localVideoStream,
+  localAudioStream,
   mediaMode,
   micEnabled,
   peers,
@@ -38,6 +40,7 @@ export function VoiceRoomView({
           <VoiceStage
             currentMember={currentMember}
             localVideoStream={localVideoStream}
+            localAudioStream={localAudioStream}
             localMode={mediaMode}
             micEnabled={micEnabled}
             peers={peers}

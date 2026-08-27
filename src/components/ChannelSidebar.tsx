@@ -1,8 +1,9 @@
-import { IconHash, IconMicrophone, IconMicrophoneOff, IconSettings, IconVolume2 } from "@tabler/icons-react";
+import { IconHash, IconSettings, IconVolume2 } from "@tabler/icons-react";
 import type { Channel, Member } from "@/lib/types";
 import type { MediaMode, PeerCallState } from "@/lib/useVoiceCall";
 import { Avatar } from "./Avatar";
 import { VoiceControls } from "./VoiceControls";
+import { VoiceOccupantRow } from "./VoiceOccupantRow";
 
 interface ChannelSidebarProps {
   channels: Channel[];
@@ -11,6 +12,7 @@ interface ChannelSidebarProps {
   onSelectChannel: (channelId: string) => void;
   activeVoiceChannelId: string | null;
   voicePeers: Record<string, PeerCallState>;
+  localAudioStream: MediaStream | null;
   onJoinVoice: (channelId: string) => void;
   micEnabled: boolean;
   mediaMode: MediaMode;
@@ -28,6 +30,7 @@ export function ChannelSidebar({
   onSelectChannel,
   activeVoiceChannelId,
   voicePeers,
+  localAudioStream,
   onJoinVoice,
   micEnabled,
   mediaMode,
@@ -84,25 +87,21 @@ export function ChannelSidebar({
               </button>
               {joined && (
                 <>
-                  <div className="flex items-center gap-1.5 py-0.5 pr-2 pl-6.5">
-                    <Avatar name={currentMember.name} color={currentMember.color} size={20} />
-                    <span className="min-w-0 flex-1 truncate text-[12.5px] text-vc-text-muted">Você</span>
-                    {micEnabled ? (
-                      <IconMicrophone size={12} className="text-vc-accent" />
-                    ) : (
-                      <IconMicrophoneOff size={12} className="text-vc-text-faint" />
-                    )}
-                  </div>
+                  <VoiceOccupantRow
+                    name={currentMember.name}
+                    color={currentMember.color}
+                    audioStream={localAudioStream}
+                    micEnabled={micEnabled}
+                    label="Você"
+                  />
                   {Object.entries(voicePeers).map(([peerId, peer]) => (
-                    <div key={peerId} className="flex items-center gap-1.5 py-0.5 pr-2 pl-6.5">
-                      <Avatar name={peer.name} color={peer.color} size={20} />
-                      <span className="min-w-0 flex-1 truncate text-[12.5px] text-vc-text-muted">{peer.name}</span>
-                      {peer.micEnabled ? (
-                        <IconMicrophone size={12} className="text-vc-accent" />
-                      ) : (
-                        <IconMicrophoneOff size={12} className="text-vc-text-faint" />
-                      )}
-                    </div>
+                    <VoiceOccupantRow
+                      key={peerId}
+                      name={peer.name}
+                      color={peer.color}
+                      audioStream={peer.audioStream}
+                      micEnabled={peer.micEnabled}
+                    />
                   ))}
                 </>
               )}

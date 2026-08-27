@@ -55,6 +55,7 @@ export function useVoiceCall(member: Member) {
   const [micEnabled, setMicEnabled] = useState(true);
   const [mediaMode, setMediaMode] = useState<MediaMode>("none");
   const [localVideoStream, setLocalVideoStream] = useState<MediaStream | null>(null);
+  const [localAudioStream, setLocalAudioStream] = useState<MediaStream | null>(null);
   const [peers, setPeers] = useState<Record<string, PeerCallState>>({});
   const [error, setError] = useState<string | null>(null);
 
@@ -199,6 +200,7 @@ export function useVoiceCall(member: Member) {
     }
     setPeers({});
     setLocalVideoStream(null);
+    setLocalAudioStream(null);
     setMediaMode("none");
     setMicEnabled(true);
     setActiveChannelId(null);
@@ -218,6 +220,7 @@ export function useVoiceCall(member: Member) {
         return;
       }
       micStreamRef.current = micStream;
+      setLocalAudioStream(micStream);
       setActiveChannelId(channelId);
 
       const channel = getSupabase().channel(`voice:${channelId}`, {
@@ -366,6 +369,7 @@ export function useVoiceCall(member: Member) {
     mediaMode,
     peers,
     localVideoStream,
+    localAudioStream,
     error,
     join,
     leave,
