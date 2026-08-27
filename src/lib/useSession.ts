@@ -1,69 +1,89 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { randomAvatarColor } from "./colors";
+import { useEffect, useState } from "react";
 import { supabase } from "./supabase";
 import type { Member } from "./types";
 
+type Status = "loading" | "signed-out" | "no-member" | "member";
+export type AuthResult = { ok: true; message?: string } | { ok: false; message: string };
+
 export function useSession() {
+  const [status, setStatus] = useState<Status>("loading");
   const [member, setMember] = useState<Member | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [joinError, setJoinError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function init() {
-      const { data: sessionData } = await supabase.auth.getSession();
-      let userId = sessionData.session?.user.id;
-
-      if (!userId) {
-        const { data, error } = await supabase.auth.signInAnonymously();
-        if (error || !data.user) {
-          if (!cancelled) setLoading(false);
-          return;
-        }
-        userId = data.user.id;
-      }
-
+    async function loadMember(userId: string) {
       const { data: row } = await supabase
         .from("members")
         .select("id, name, color")
         .eq("id", userId)
         .maybeSingle();
 
-      if (!cancelled) {
-        setMember(row ? { ...row, online: true, voiceChannelId: null } : null);
-        setLoading(false);
+      if (cancelled) return;
+
+      if (row) {
+        setMember({ ...row, online: true, voiceChannelId: null });
+        setStatus("member");
+      } else {
+        setMember(null);
+        setStatus("no-member");
       }
     }
 
-    init();
+    supabase.auth.getSession().then(({ data }) => {
+      const user = data.session?.user;
+      if (user) loadMember(user.id);
+      else if (!cancelled) setStatus("signed-out");
+    });
+
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) loadMember(session.user.id);
+      else {
+        setMember(null);
+        setStatus("signed-out");
+      }
+    });
+
     return () => {
       cancelled = true;
+      subscription.subscription.unsubscribe();
     };
   }, []);
 
-  const join = useCallback(async (inviteCode: string, displayName: string) => {
-    setJoinError(null);
-    const color = randomAvatarColor();
-
-    const { error } = await supabase.rpc("join_with_invite", {
-      invite_code: inviteCode,
-      display_name: displayName,
-      avatar_color: color,
+  async function signInWithGoogle() {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin },
     });
+  }
 
+  async function signInWithPassword(email: string, password: string): Promise<AuthResult> {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { ok: false, message: "E-mail ou senha incorretos." };
+    return { ok: true };
+  }
+
+  async function signUpWithPassword(email: string, password: string): Promise<AuthResult> {
+    const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) {
-      setJoinError("Código de convite inválido.");
-      return;
+      const msg = error.message.toLowerCase();
+      if (msg.includes("already registered")) {
+        return { ok: false, message: "Essa conta já existe. Tente entrar." };
+      }
+      if (msg.includes("password")) {
+        return { ok: false, message: "A senha precisa ter pelo menos 6 caracteres." };
+      }
+      return { ok: false, message: "Não deu pra criar a conta." };
     }
+    if (!data.session) return { ok: true, message: "Confira seu e-mail para confirmar a conta." };
+    return { ok: true };
+  }
 
-    const { data } = await supabase.auth.getUser();
-    if (data.user) {
-      setMember({ id: data.user.id, name: displayName, color, online: true, voiceChannelId: null });
-    }
-  }, []);
+  async function signOut() {
+    await supabase.auth.signOut();
+  }
 
-  return { member, loading, join, joinError };
+  return { status, member, signInWithGoogle, signInWithPassword, signUpWithPassword, signOut };
 }

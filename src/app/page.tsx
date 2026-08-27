@@ -1,19 +1,27 @@
 "use client";
 
+import { AccountErrorScreen } from "@/components/AccountErrorScreen";
 import { AppShell } from "@/components/AppShell";
-import { JoinScreen } from "@/components/JoinScreen";
+import { LoginScreen } from "@/components/LoginScreen";
 import { useSession } from "@/lib/useSession";
 
 export default function Home() {
-  const { member, loading, join, joinError } = useSession();
+  const { status, member, signInWithGoogle, signInWithPassword, signUpWithPassword, signOut } =
+    useSession();
 
-  if (loading) {
-    return <div className="flex h-screen items-center justify-center bg-vc-app text-vc-text-muted" />;
+  if (status === "loading") {
+    return <div className="h-screen bg-vc-app" />;
   }
 
-  if (!member) {
-    return <JoinScreen onJoin={join} error={joinError} />;
+  if (status === "signed-out") {
+    return (
+      <LoginScreen onSignIn={signInWithPassword} onSignUp={signUpWithPassword} onGoogle={signInWithGoogle} />
+    );
   }
 
-  return <AppShell member={member} />;
+  if (status === "no-member") {
+    return <AccountErrorScreen onSignOut={signOut} />;
+  }
+
+  return <AppShell member={member!} />;
 }
