@@ -33,15 +33,16 @@ export function useSession() {
       }
     }
 
-    supabase.auth.getSession().then(({ data }) => {
-      const user = data.session?.user;
-      if (user) loadMember(user.id);
-      else if (!cancelled) setStatus("signed-out");
-    });
-
+    // Rely solely on onAuthStateChange rather than also calling getSession()
+    // separately: onAuthStateChange always fires once with the resolved
+    // current session (event INITIAL_SESSION) after Supabase finishes
+    // detecting a session from the URL (e.g. the Google OAuth redirect
+    // hash). Calling getSession() ourselves in parallel could read the
+    // session before that detection finished, wrongly reporting
+    // signed-out right after a successful login.
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) loadMember(session.user.id);
-      else {
+      else if (!cancelled) {
         setMember(null);
         setStatus("signed-out");
       }
