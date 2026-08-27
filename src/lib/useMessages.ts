@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "./supabase";
+import { playMessageSound } from "./sounds";
+import { getSupabase } from "./supabase";
 import { messageFromRow, type Message, type MessageRow } from "./types";
 
-export function useMessages(channelId: string) {
+export function useMessages(channelId: string, currentUserId: string) {
   const [messages, setMessages] = useState<Message[]>([]);
 
   useEffect(() => {
     let cancelled = false;
+    const supabase = getSupabase();
 
     supabase
       .from("messages")
@@ -26,7 +28,9 @@ export function useMessages(channelId: string) {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages", filter: `channel_id=eq.${channelId}` },
         (payload) => {
-          setMessages((prev) => [...prev, messageFromRow(payload.new as MessageRow)]);
+          const row = payload.new as MessageRow;
+          setMessages((prev) => [...prev, messageFromRow(row)]);
+          if (row.author_id !== currentUserId) playMessageSound();
         },
       )
       .subscribe();
@@ -35,11 +39,11 @@ export function useMessages(channelId: string) {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [channelId]);
+  }, [channelId, currentUserId]);
 
   return messages;
 }
 
 export async function sendMessage(channelId: string, authorId: string, content: string) {
-  await supabase.from("messages").insert({ channel_id: channelId, author_id: authorId, content });
+  await getSupabase().from("messages").insert({ channel_id: channelId, author_id: authorId, content });
 }

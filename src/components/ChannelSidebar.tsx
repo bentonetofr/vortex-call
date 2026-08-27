@@ -1,21 +1,41 @@
-import { IconHash, IconMicrophone, IconSettings, IconVolume2 } from "@tabler/icons-react";
+import { IconHash, IconMicrophone, IconMicrophoneOff, IconSettings, IconVolume2 } from "@tabler/icons-react";
 import type { Channel, Member } from "@/lib/types";
+import type { MediaMode, PeerCallState } from "@/lib/useVoiceCall";
 import { Avatar } from "./Avatar";
+import { VoiceControls } from "./VoiceControls";
 
 interface ChannelSidebarProps {
   channels: Channel[];
-  members: Member[];
   currentMember: Member;
   activeChannelId: string;
   onSelectChannel: (channelId: string) => void;
+  activeVoiceChannelId: string | null;
+  voicePeers: Record<string, PeerCallState>;
+  onJoinVoice: (channelId: string) => void;
+  micEnabled: boolean;
+  mediaMode: MediaMode;
+  onToggleMic: () => void;
+  onToggleCamera: () => void;
+  onToggleScreenShare: () => void;
+  onLeaveVoice: () => void;
+  voiceError: string | null;
 }
 
 export function ChannelSidebar({
   channels,
-  members,
   currentMember,
   activeChannelId,
   onSelectChannel,
+  activeVoiceChannelId,
+  voicePeers,
+  onJoinVoice,
+  micEnabled,
+  mediaMode,
+  onToggleMic,
+  onToggleCamera,
+  onToggleScreenShare,
+  onLeaveVoice,
+  voiceError,
 }: ChannelSidebarProps) {
   const textChannels = channels.filter((c) => c.type === "text");
   const voiceChannels = channels.filter((c) => c.type === "voice");
@@ -40,38 +60,73 @@ export function ChannelSidebar({
                   : "text-vc-text-muted hover:bg-vc-hover hover:text-vc-text"
               }`}
             >
-              <IconHash size={16} />
-              {channel.name}
+              <IconHash size={16} className="shrink-0" />
+              <span className="truncate">{channel.name}</span>
             </button>
           );
         })}
 
         <p className="px-2 pt-4 pb-1 text-xs tracking-wide text-vc-text-muted">Canais de voz</p>
+        {voiceError && <p className="px-2 pb-1 text-[11px] text-red-400">{voiceError}</p>}
         {voiceChannels.map((channel) => {
-          const occupants = members.filter((m) => m.voiceChannelId === channel.id);
+          const joined = channel.id === activeVoiceChannelId;
+
           return (
             <div key={channel.id} className="mt-0.5">
-              <div className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-vc-text-muted">
-                <IconVolume2 size={16} />
-                {channel.name}
-              </div>
-              {occupants.map((member) => (
-                <div key={member.id} className="flex items-center gap-1.5 py-0.5 pr-2 pl-6.5">
-                  <Avatar name={member.name} color={member.color} size={20} />
-                  <span className="flex-1 text-[12.5px] text-vc-text-muted">{member.name}</span>
-                  <IconMicrophone size={12} className="text-vc-accent" />
-                </div>
-              ))}
+              <button
+                onClick={() => onJoinVoice(channel.id)}
+                className={`flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-sm ${
+                  joined ? "bg-vc-accent-soft text-vc-accent" : "text-vc-text-muted hover:bg-vc-hover hover:text-vc-text"
+                }`}
+              >
+                <IconVolume2 size={16} className="shrink-0" />
+                <span className="truncate">{channel.name}</span>
+              </button>
+              {joined && (
+                <>
+                  <div className="flex items-center gap-1.5 py-0.5 pr-2 pl-6.5">
+                    <Avatar name={currentMember.name} color={currentMember.color} size={20} />
+                    <span className="min-w-0 flex-1 truncate text-[12.5px] text-vc-text-muted">Você</span>
+                    {micEnabled ? (
+                      <IconMicrophone size={12} className="text-vc-accent" />
+                    ) : (
+                      <IconMicrophoneOff size={12} className="text-vc-text-faint" />
+                    )}
+                  </div>
+                  {Object.entries(voicePeers).map(([peerId, peer]) => (
+                    <div key={peerId} className="flex items-center gap-1.5 py-0.5 pr-2 pl-6.5">
+                      <Avatar name={peer.name} color={peer.color} size={20} />
+                      <span className="min-w-0 flex-1 truncate text-[12.5px] text-vc-text-muted">{peer.name}</span>
+                      {peer.micEnabled ? (
+                        <IconMicrophone size={12} className="text-vc-accent" />
+                      ) : (
+                        <IconMicrophoneOff size={12} className="text-vc-text-faint" />
+                      )}
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           );
         })}
       </div>
 
+      {activeVoiceChannelId && (
+        <VoiceControls
+          channelName={channels.find((c) => c.id === activeVoiceChannelId)?.name ?? ""}
+          micEnabled={micEnabled}
+          mediaMode={mediaMode}
+          onToggleMic={onToggleMic}
+          onToggleCamera={onToggleCamera}
+          onToggleScreenShare={onToggleScreenShare}
+          onLeave={onLeaveVoice}
+        />
+      )}
+
       <div className="flex items-center gap-2 border-t border-vc-border bg-vc-sidebar-footer px-2.5 py-2">
         <Avatar name={currentMember.name} color={currentMember.color} size={26} />
-        <span className="flex-1 text-[12.5px] text-vc-text">{currentMember.name}</span>
-        <IconMicrophone size={16} className="text-vc-text-muted" />
-        <IconSettings size={16} className="text-vc-text-muted" />
+        <span className="min-w-0 flex-1 truncate text-[12.5px] text-vc-text">{currentMember.name}</span>
+        <IconSettings size={16} className="shrink-0 text-vc-text-muted" />
       </div>
     </div>
   );

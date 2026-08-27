@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "./supabase";
+import { getSupabase } from "./supabase";
 import type { Member } from "./types";
 
 type Status = "loading" | "signed-out" | "no-member" | "member";
@@ -13,6 +13,7 @@ export function useSession() {
 
   useEffect(() => {
     let cancelled = false;
+    const supabase = getSupabase();
 
     async function loadMember(userId: string) {
       const { data: row } = await supabase
@@ -53,20 +54,20 @@ export function useSession() {
   }, []);
 
   async function signInWithGoogle() {
-    await supabase.auth.signInWithOAuth({
+    await getSupabase().auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: window.location.origin },
     });
   }
 
   async function signInWithPassword(email: string, password: string): Promise<AuthResult> {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await getSupabase().auth.signInWithPassword({ email, password });
     if (error) return { ok: false, message: "E-mail ou senha incorretos." };
     return { ok: true };
   }
 
   async function signUpWithPassword(email: string, password: string): Promise<AuthResult> {
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await getSupabase().auth.signUp({ email, password });
     if (error) {
       const msg = error.message.toLowerCase();
       if (msg.includes("already registered")) {
@@ -82,7 +83,7 @@ export function useSession() {
   }
 
   async function signOut() {
-    await supabase.auth.signOut();
+    await getSupabase().auth.signOut();
   }
 
   return { status, member, signInWithGoogle, signInWithPassword, signUpWithPassword, signOut };

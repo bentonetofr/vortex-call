@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "./supabase";
+import { getSupabase } from "./supabase";
 import { usePresence } from "./usePresence";
 import type { Member } from "./types";
 
@@ -12,7 +12,7 @@ export function useMembers(currentMember: Member | null): Member[] {
   const onlineIds = usePresence(currentMember);
 
   useEffect(() => {
-    supabase
+    getSupabase()
       .from("members")
       .select("id, name, color")
       .then(({ data }) => {

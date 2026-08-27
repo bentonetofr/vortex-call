@@ -5,6 +5,10 @@ import { AppShell } from "@/components/AppShell";
 import { LoginScreen } from "@/components/LoginScreen";
 import { useSession } from "@/lib/useSession";
 
+// Entirely per-session/authenticated content — nothing here is safe or useful
+// to prerender statically at build time.
+export const dynamic = "force-dynamic";
+
 export default function Home() {
   const { status, member, signInWithGoogle, signInWithPassword, signUpWithPassword, signOut } =
     useSession();

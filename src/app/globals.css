@@ -27,6 +27,11 @@
   --color-vc-border: #ffffff0f;
 }
 
+html,
+body {
+  overflow-x: hidden;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

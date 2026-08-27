@@ -1,6 +1,6 @@
 "use client";
 
-import { IconHash, IconPaperclip, IconSend2 } from "@tabler/icons-react";
+import { IconHash, IconPaperclip, IconSend2, IconVolume2 } from "@tabler/icons-react";
 import { useState } from "react";
 import type { Channel, Member, Message } from "@/lib/types";
 import { Avatar } from "./Avatar";
@@ -30,8 +30,12 @@ export function ChatArea({ channel, messages, members, onSendMessage }: ChatArea
   return (
     <div className="flex min-w-0 flex-1 flex-col bg-vc-chat">
       <div className="flex items-center gap-2 border-b border-vc-border px-4 py-3">
-        <IconHash size={18} className="text-vc-text-muted" />
-        <span className="font-medium text-vc-text">{channel.name}</span>
+        {channel.type === "voice" ? (
+          <IconVolume2 size={18} className="shrink-0 text-vc-text-muted" />
+        ) : (
+          <IconHash size={18} className="shrink-0 text-vc-text-muted" />
+        )}
+        <span className="truncate font-medium text-vc-text">{channel.name}</span>
       </div>
 
       <div className="flex-1 space-y-3.5 overflow-y-auto px-4 py-3.5">
@@ -41,14 +45,12 @@ export function ChatArea({ channel, messages, members, onSendMessage }: ChatArea
           return (
             <div key={message.id} className="flex gap-2.5">
               <Avatar name={author.name} color={author.color} size={32} />
-              <div>
-                <div className="text-sm">
-                  <span className="font-medium text-vc-accent">{author.name}</span>
-                  <span className="ml-1.5 text-xs text-vc-text-faint">
-                    {formatTime(message.createdAt)}
-                  </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-1.5 text-sm">
+                  <span className="truncate font-medium text-vc-accent">{author.name}</span>
+                  <span className="shrink-0 text-xs text-vc-text-faint">{formatTime(message.createdAt)}</span>
                 </div>
-                <p className="mt-0.5 text-[13.5px] text-vc-text-secondary">{message.content}</p>
+                <p className="mt-0.5 text-[13.5px] break-words text-vc-text-secondary">{message.content}</p>
               </div>
             </div>
           );
@@ -61,7 +63,9 @@ export function ChatArea({ channel, messages, members, onSendMessage }: ChatArea
           <input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder={`Conversar em #${channel.name}`}
+            placeholder={
+              channel.type === "voice" ? `Conversar em ${channel.name}` : `Conversar em #${channel.name}`
+            }
             className="flex-1 bg-transparent text-sm text-vc-text placeholder:text-vc-text-muted focus:outline-none"
           />
           <button type="submit" aria-label="Enviar mensagem">

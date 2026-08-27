@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "./supabase";
+import { getSupabase } from "./supabase";
 import type { Member } from "./types";
 
 export function usePresence(member: Member | null) {
@@ -10,6 +10,7 @@ export function usePresence(member: Member | null) {
   useEffect(() => {
     if (!member) return;
 
+    const supabase = getSupabase();
     const channel = supabase.channel("presence:lobby", {
       config: { presence: { key: member.id } },
     });

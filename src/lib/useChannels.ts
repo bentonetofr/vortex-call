@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "./supabase";
+import { getSupabase } from "./supabase";
 import type { Channel } from "./types";
 
 export function useChannels() {
   const [channels, setChannels] = useState<Channel[]>([]);
 
   useEffect(() => {
-    supabase
+    getSupabase()
       .from("channels")
       .select("id, name, type")
       .order("position")
