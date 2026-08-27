@@ -19,10 +19,18 @@ export type MediaMode = "none" | "camera" | "screen";
 export interface PeerCallState {
   audioStream: MediaStream | null;
   videoStream: MediaStream | null;
+  screenAudioStream: MediaStream | null;
   mediaMode: MediaMode;
   micEnabled: boolean;
   name: string;
   color: string;
+}
+
+export interface ScreenShareOptions {
+  width: number | null;
+  height: number | null;
+  frameRate: number;
+  withAudio: boolean;
 }
 
 interface PresencePayload {
@@ -44,6 +52,7 @@ interface SignalMessage {
 const emptyPeer = (name: string, color: string): PeerCallState => ({
   audioStream: null,
   videoStream: null,
+  screenAudioStream: null,
   mediaMode: "none",
   micEnabled: true,
   name,
@@ -67,6 +76,8 @@ export function useVoiceCall(member: Member) {
   const micStreamRef = useRef<MediaStream | null>(null);
   const videoSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
   const localVideoTrackRef = useRef<MediaStreamTrack | null>(null);
+  const screenAudioSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
+  const screenAudioTrackRef = useRef<MediaStreamTrack | null>(null);
 
   const send = useCallback(
     (message: Omit<SignalMessage, "from">) => {
@@ -83,6 +94,7 @@ export function useVoiceCall(member: Member) {
     connectionsRef.current.get(peerId)?.close();
     connectionsRef.current.delete(peerId);
     videoSendersRef.current.delete(peerId);
+    screenAudioSendersRef.current.delete(peerId);
     politeRef.current.delete(peerId);
     makingOfferRef.current.delete(peerId);
     ignoreOfferRef.current.delete(peerId);
@@ -112,6 +124,10 @@ export function useVoiceCall(member: Member) {
         const stream = new MediaStream([localVideoTrackRef.current]);
         videoSendersRef.current.set(peerId, pc.addTrack(localVideoTrackRef.current, stream));
       }
+      if (screenAudioTrackRef.current) {
+        const stream = new MediaStream([screenAudioTrackRef.current]);
+        screenAudioSendersRef.current.set(peerId, pc.addTrack(screenAudioTrackRef.current, stream));
+      }
 
       pc.onnegotiationneeded = async () => {
         try {
@@ -133,7 +149,13 @@ export function useVoiceCall(member: Member) {
         setPeers((prev) => {
           const existing = prev[peerId] ?? emptyPeer(meta.name, meta.color);
           if (event.track.kind === "audio") {
-            return { ...prev, [peerId]: { ...existing, audioStream: event.streams[0] ?? null } };
+            // The mic track is always added first (at connection creation), so
+            // the first audio track to arrive is the mic; any later one is
+            // screen-share audio.
+            if (!existing.audioStream) {
+              return { ...prev, [peerId]: { ...existing, audioStream: event.streams[0] ?? null } };
+            }
+            return { ...prev, [peerId]: { ...existing, screenAudioStream: event.streams[0] ?? null } };
           }
           return { ...prev, [peerId]: { ...existing, videoStream: event.streams[0] ?? null } };
         });
@@ -187,6 +209,7 @@ export function useVoiceCall(member: Member) {
     connectionsRef.current.forEach((pc) => pc.close());
     connectionsRef.current.clear();
     videoSendersRef.current.clear();
+    screenAudioSendersRef.current.clear();
     politeRef.current.clear();
     makingOfferRef.current.clear();
     ignoreOfferRef.current.clear();
@@ -194,6 +217,8 @@ export function useVoiceCall(member: Member) {
     micStreamRef.current = null;
     localVideoTrackRef.current?.stop();
     localVideoTrackRef.current = null;
+    screenAudioTrackRef.current?.stop();
+    screenAudioTrackRef.current = null;
     if (rtcChannelRef.current) {
       getSupabase().removeChannel(rtcChannelRef.current);
       rtcChannelRef.current = null;
@@ -250,6 +275,8 @@ export function useVoiceCall(member: Member) {
                 name: meta.name,
                 color: meta.color,
                 videoStream: meta.mediaMode === "none" ? null : (prev[peerId]?.videoStream ?? null),
+                screenAudioStream:
+                  meta.mediaMode === "screen" ? (prev[peerId]?.screenAudioStream ?? null) : null,
               },
             }));
           }
@@ -328,6 +355,25 @@ export function useVoiceCall(member: Member) {
     [micEnabled, member],
   );
 
+  const setScreenAudioTrack = useCallback((track: MediaStreamTrack | null) => {
+    screenAudioTrackRef.current?.stop();
+    screenAudioTrackRef.current = track;
+
+    connectionsRef.current.forEach((pc, peerId) => {
+      const existingSender = screenAudioSendersRef.current.get(peerId);
+      if (track) {
+        if (existingSender) {
+          existingSender.replaceTrack(track);
+        } else {
+          screenAudioSendersRef.current.set(peerId, pc.addTrack(track, new MediaStream([track])));
+        }
+      } else if (existingSender) {
+        pc.removeTrack(existingSender);
+        screenAudioSendersRef.current.delete(peerId);
+      }
+    });
+  }, []);
+
   const toggleCamera = useCallback(async () => {
     if (mediaMode === "camera") {
       setVideoTrack(null, "none");
@@ -342,21 +388,41 @@ export function useVoiceCall(member: Member) {
     }
   }, [mediaMode, setVideoTrack]);
 
-  const toggleScreenShare = useCallback(async () => {
-    if (mediaMode === "screen") {
-      setVideoTrack(null, "none");
-      return;
-    }
-    setError(null);
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-      const track = stream.getVideoTracks()[0];
-      track.onended = () => setVideoTrack(null, "none");
-      setVideoTrack(track, "screen");
-    } catch {
-      // User cancelled the screen picker — not an error worth surfacing.
-    }
-  }, [mediaMode, setVideoTrack]);
+  const startScreenShare = useCallback(
+    async (options: ScreenShareOptions) => {
+      setError(null);
+      try {
+        const videoConstraints: MediaTrackConstraints = { frameRate: { ideal: options.frameRate } };
+        if (options.width && options.height) {
+          videoConstraints.width = { ideal: options.width };
+          videoConstraints.height = { ideal: options.height };
+        }
+
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          video: videoConstraints,
+          audio: options.withAudio,
+        });
+
+        const videoTrack = stream.getVideoTracks()[0];
+        videoTrack.onended = () => {
+          setVideoTrack(null, "none");
+          setScreenAudioTrack(null);
+        };
+        setVideoTrack(videoTrack, "screen");
+
+        const audioTrack = stream.getAudioTracks()[0];
+        if (audioTrack) setScreenAudioTrack(audioTrack);
+      } catch {
+        // User cancelled the screen picker — not an error worth surfacing.
+      }
+    },
+    [setVideoTrack, setScreenAudioTrack],
+  );
+
+  const stopScreenShare = useCallback(() => {
+    setVideoTrack(null, "none");
+    setScreenAudioTrack(null);
+  }, [setVideoTrack, setScreenAudioTrack]);
 
   useEffect(() => {
     return () => leave();
@@ -375,6 +441,7 @@ export function useVoiceCall(member: Member) {
     leave,
     toggleMic,
     toggleCamera,
-    toggleScreenShare,
+    startScreenShare,
+    stopScreenShare,
   };
 }

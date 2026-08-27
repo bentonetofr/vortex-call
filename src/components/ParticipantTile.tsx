@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { IconMicrophoneOff, IconScreenShare } from "@tabler/icons-react";
+import { IconMaximize, IconMicrophoneOff, IconScreenShare } from "@tabler/icons-react";
 import { useSpeaking } from "@/lib/useSpeaking";
 import { Avatar } from "./Avatar";
 
@@ -49,6 +49,15 @@ export function ParticipantTile({
         <div className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-black/50">
           <IconMicrophoneOff size={12} className="text-red-400" />
         </div>
+      )}
+      {videoStream && (
+        <button
+          onClick={() => videoRef.current?.requestFullscreen()}
+          aria-label="Tela cheia"
+          className="absolute right-2 bottom-2 flex h-6 w-6 items-center justify-center rounded bg-black/50 text-white hover:bg-black/70"
+        >
+          <IconMaximize size={13} />
+        </button>
       )}
     </div>
   );

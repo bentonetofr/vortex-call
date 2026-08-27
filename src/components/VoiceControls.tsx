@@ -1,3 +1,5 @@
+"use client";
+
 import {
   IconMicrophone,
   IconMicrophoneOff,
@@ -7,7 +9,9 @@ import {
   IconVideo,
   IconVideoOff,
 } from "@tabler/icons-react";
-import type { MediaMode } from "@/lib/useVoiceCall";
+import { useState } from "react";
+import type { MediaMode, ScreenShareOptions } from "@/lib/useVoiceCall";
+import { ScreenShareSettingsModal } from "./ScreenShareSettingsModal";
 
 interface VoiceControlsProps {
   channelName: string;
@@ -15,7 +19,8 @@ interface VoiceControlsProps {
   mediaMode: MediaMode;
   onToggleMic: () => void;
   onToggleCamera: () => void;
-  onToggleScreenShare: () => void;
+  onStartScreenShare: (options: ScreenShareOptions) => void;
+  onStopScreenShare: () => void;
   onLeave: () => void;
 }
 
@@ -25,9 +30,12 @@ export function VoiceControls({
   mediaMode,
   onToggleMic,
   onToggleCamera,
-  onToggleScreenShare,
+  onStartScreenShare,
+  onStopScreenShare,
   onLeave,
 }: VoiceControlsProps) {
+  const [showScreenShareSettings, setShowScreenShareSettings] = useState(false);
+
   return (
     <div className="border-t border-vc-border bg-vc-sidebar-footer px-2.5 py-2">
       <p className="truncate px-0.5 pb-1.5 text-[11px] text-vc-online">Conectado a {channelName}</p>
@@ -47,7 +55,7 @@ export function VoiceControls({
           {mediaMode === "camera" ? <IconVideo size={16} /> : <IconVideoOff size={16} />}
         </button>
         <button
-          onClick={onToggleScreenShare}
+          onClick={() => (mediaMode === "screen" ? onStopScreenShare() : setShowScreenShareSettings(true))}
           aria-label={mediaMode === "screen" ? "Parar compartilhamento" : "Compartilhar tela"}
           className={`flex h-8 w-8 items-center justify-center rounded-md ${mediaMode === "screen" ? "bg-vc-accent-soft text-vc-accent" : "text-vc-text-muted hover:bg-vc-hover"}`}
         >
@@ -61,6 +69,16 @@ export function VoiceControls({
           <IconPhoneOff size={16} />
         </button>
       </div>
+
+      {showScreenShareSettings && (
+        <ScreenShareSettingsModal
+          onCancel={() => setShowScreenShareSettings(false)}
+          onConfirm={(options) => {
+            setShowScreenShareSettings(false);
+            onStartScreenShare(options);
+          }}
+        />
+      )}
     </div>
   );
 }

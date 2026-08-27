@@ -46,7 +46,8 @@ export function AppShell({ member }: AppShellProps) {
         mediaMode={voiceCall.mediaMode}
         onToggleMic={voiceCall.toggleMic}
         onToggleCamera={voiceCall.toggleCamera}
-        onToggleScreenShare={voiceCall.toggleScreenShare}
+        onStartScreenShare={voiceCall.startScreenShare}
+        onStopScreenShare={voiceCall.stopScreenShare}
         onLeaveVoice={voiceCall.leave}
         voiceError={voiceCall.error}
       />

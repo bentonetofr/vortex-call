@@ -1,6 +1,6 @@
 import { IconHash, IconSettings, IconVolume2 } from "@tabler/icons-react";
 import type { Channel, Member } from "@/lib/types";
-import type { MediaMode, PeerCallState } from "@/lib/useVoiceCall";
+import type { MediaMode, PeerCallState, ScreenShareOptions } from "@/lib/useVoiceCall";
 import { Avatar } from "./Avatar";
 import { VoiceControls } from "./VoiceControls";
 import { VoiceOccupantRow } from "./VoiceOccupantRow";
@@ -18,7 +18,8 @@ interface ChannelSidebarProps {
   mediaMode: MediaMode;
   onToggleMic: () => void;
   onToggleCamera: () => void;
-  onToggleScreenShare: () => void;
+  onStartScreenShare: (options: ScreenShareOptions) => void;
+  onStopScreenShare: () => void;
   onLeaveVoice: () => void;
   voiceError: string | null;
 }
@@ -36,7 +37,8 @@ export function ChannelSidebar({
   mediaMode,
   onToggleMic,
   onToggleCamera,
-  onToggleScreenShare,
+  onStartScreenShare,
+  onStopScreenShare,
   onLeaveVoice,
   voiceError,
 }: ChannelSidebarProps) {
@@ -117,7 +119,8 @@ export function ChannelSidebar({
           mediaMode={mediaMode}
           onToggleMic={onToggleMic}
           onToggleCamera={onToggleCamera}
-          onToggleScreenShare={onToggleScreenShare}
+          onStartScreenShare={onStartScreenShare}
+          onStopScreenShare={onStopScreenShare}
           onLeave={onLeaveVoice}
         />
       )}
