@@ -1,4 +1,7 @@
-import { IconPhone } from "@tabler/icons-react";
+"use client";
+
+import { IconMenu2, IconPhone, IconUsers, IconVolume2 } from "@tabler/icons-react";
+import { useState } from "react";
 import type { Channel, Member, Message } from "@/lib/types";
 import type { MediaMode, PeerCallState } from "@/lib/useVoiceCall";
 import { ChatArea } from "./ChatArea";
@@ -17,6 +20,8 @@ interface VoiceRoomViewProps {
   mediaMode: MediaMode;
   micEnabled: boolean;
   peers: Record<string, PeerCallState>;
+  onOpenDrawer: () => void;
+  onOpenMembers: () => void;
 }
 
 export function VoiceRoomView({
@@ -32,10 +37,31 @@ export function VoiceRoomView({
   mediaMode,
   micEnabled,
   peers,
+  onOpenDrawer,
+  onOpenMembers,
 }: VoiceRoomViewProps) {
+  const [mobileTab, setMobileTab] = useState<"stage" | "chat">("stage");
+
   return (
-    <div className="flex min-w-0 flex-1">
-      <div className="flex flex-1 flex-col bg-vc-chat">
+    <div className="flex min-w-0 flex-1 flex-col md:flex-row">
+      <div className="flex items-center gap-2 border-b border-vc-border px-3 py-3 md:hidden">
+        <button onClick={onOpenDrawer} className="shrink-0 text-vc-text-muted" aria-label="Abrir menu">
+          <IconMenu2 size={20} />
+        </button>
+        <IconVolume2 size={18} className="shrink-0 text-vc-text-muted" />
+        <span className="min-w-0 flex-1 truncate font-medium text-vc-text">{channel.name}</span>
+        <button
+          onClick={() => setMobileTab((tab) => (tab === "stage" ? "chat" : "stage"))}
+          className="shrink-0 rounded-md bg-vc-input px-2.5 py-1 text-xs font-medium text-vc-text"
+        >
+          {mobileTab === "stage" ? "Chat" : "Palco"}
+        </button>
+        <button onClick={onOpenMembers} className="shrink-0 text-vc-text-muted" aria-label="Ver membros">
+          <IconUsers size={20} />
+        </button>
+      </div>
+
+      <div className={`min-h-0 flex-col bg-vc-chat md:flex md:flex-1 ${mobileTab === "chat" ? "hidden" : "flex flex-1"}`}>
         {isConnected ? (
           <VoiceStage
             currentMember={currentMember}
@@ -59,8 +85,18 @@ export function VoiceRoomView({
         )}
       </div>
 
-      <div className="flex w-[320px] shrink-0 flex-col border-l border-vc-border">
-        <ChatArea channel={channel} messages={messages} members={members} onSendMessage={onSendMessage} />
+      <div
+        className={`min-h-0 w-full flex-col border-vc-border md:flex md:w-[320px] md:shrink-0 md:border-l ${
+          mobileTab === "chat" ? "flex flex-1" : "hidden"
+        }`}
+      >
+        <ChatArea
+          channel={channel}
+          messages={messages}
+          members={members}
+          onSendMessage={onSendMessage}
+          hideMobileHeader
+        />
       </div>
     </div>
   );

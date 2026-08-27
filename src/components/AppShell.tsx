@@ -18,6 +18,8 @@ interface AppShellProps {
 
 export function AppShell({ member }: AppShellProps) {
   const [activeChannelId, setActiveChannelId] = useState("geral");
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [mobileMembersOpen, setMobileMembersOpen] = useState(false);
   const channels = useChannels();
   const members = useMembers(member);
   const messages = useMessages(activeChannelId, member.id);
@@ -30,14 +32,28 @@ export function AppShell({ member }: AppShellProps) {
     voiceCall.join(channelId);
   }
 
+  function handleSelectChannel(channelId: string) {
+    setActiveChannelId(channelId);
+  }
+
+  function closeMobileOverlays() {
+    setMobileDrawerOpen(false);
+    setMobileMembersOpen(false);
+  }
+
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen overflow-hidden">
       {voiceCall.activeChannelId && <PeerAudioPlayer peers={voiceCall.peers} />}
+
+      {(mobileDrawerOpen || mobileMembersOpen) && (
+        <div className="fixed inset-0 z-30 bg-black/50 md:hidden" onClick={closeMobileOverlays} />
+      )}
+
       <ChannelSidebar
         channels={channels}
         currentMember={member}
         activeChannelId={activeChannelId}
-        onSelectChannel={setActiveChannelId}
+        onSelectChannel={handleSelectChannel}
         activeVoiceChannelId={voiceCall.activeChannelId}
         voicePeers={voiceCall.peers}
         localAudioStream={voiceCall.localAudioStream}
@@ -50,6 +66,8 @@ export function AppShell({ member }: AppShellProps) {
         onStopScreenShare={voiceCall.stopScreenShare}
         onLeaveVoice={voiceCall.leave}
         voiceError={voiceCall.error}
+        mobileOpen={mobileDrawerOpen}
+        onCloseMobile={() => setMobileDrawerOpen(false)}
       />
       {activeChannel &&
         (activeChannel.type === "voice" ? (
@@ -66,6 +84,8 @@ export function AppShell({ member }: AppShellProps) {
             mediaMode={voiceCall.mediaMode}
             micEnabled={voiceCall.micEnabled}
             peers={voiceCall.peers}
+            onOpenDrawer={() => setMobileDrawerOpen(true)}
+            onOpenMembers={() => setMobileMembersOpen(true)}
           />
         ) : (
           <ChatArea
@@ -73,9 +93,11 @@ export function AppShell({ member }: AppShellProps) {
             messages={messages}
             members={members}
             onSendMessage={(content) => sendMessage(activeChannelId, member.id, content)}
+            onOpenDrawer={() => setMobileDrawerOpen(true)}
+            onOpenMembers={() => setMobileMembersOpen(true)}
           />
         ))}
-      <MemberList members={members} />
+      <MemberList members={members} mobileOpen={mobileMembersOpen} onCloseMobile={() => setMobileMembersOpen(false)} />
     </div>
   );
 }

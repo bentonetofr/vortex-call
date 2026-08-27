@@ -59,6 +59,24 @@ const emptyPeer = (name: string, color: string): PeerCallState => ({
   color,
 });
 
+// WebRTC's default bandwidth estimation can silently cap a screen-share
+// sender well below what a higher resolution/frame-rate actually needs.
+// Without an explicit ceiling here, picking "1080p60" in the settings
+// modal is just a capture hint — the encoder can still send far less.
+function screenShareMaxBitrate(width: number | null, height: number | null, frameRate: number): number {
+  const isHighRes = !width || !height || width * height >= 1920 * 1080;
+  const base = isHighRes ? 4_000_000 : 2_000_000;
+  return Math.round(base * (frameRate / 30));
+}
+
+function applyScreenShareEncoding(sender: RTCRtpSender, options: ScreenShareOptions) {
+  const params = sender.getParameters();
+  if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+  params.encodings[0].maxFramerate = options.frameRate;
+  params.encodings[0].maxBitrate = screenShareMaxBitrate(options.width, options.height, options.frameRate);
+  sender.setParameters(params).catch(() => {});
+}
+
 export function useVoiceCall(member: Member) {
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [micEnabled, setMicEnabled] = useState(true);
@@ -78,6 +96,7 @@ export function useVoiceCall(member: Member) {
   const localVideoTrackRef = useRef<MediaStreamTrack | null>(null);
   const screenAudioSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
   const screenAudioTrackRef = useRef<MediaStreamTrack | null>(null);
+  const screenShareOptionsRef = useRef<ScreenShareOptions | null>(null);
 
   const send = useCallback(
     (message: Omit<SignalMessage, "from">) => {
@@ -122,7 +141,9 @@ export function useVoiceCall(member: Member) {
       }
       if (localVideoTrackRef.current) {
         const stream = new MediaStream([localVideoTrackRef.current]);
-        videoSendersRef.current.set(peerId, pc.addTrack(localVideoTrackRef.current, stream));
+        const sender = pc.addTrack(localVideoTrackRef.current, stream);
+        videoSendersRef.current.set(peerId, sender);
+        if (screenShareOptionsRef.current) applyScreenShareEncoding(sender, screenShareOptionsRef.current);
       }
       if (screenAudioTrackRef.current) {
         const stream = new MediaStream([screenAudioTrackRef.current]);
@@ -219,6 +240,7 @@ export function useVoiceCall(member: Member) {
     localVideoTrackRef.current = null;
     screenAudioTrackRef.current?.stop();
     screenAudioTrackRef.current = null;
+    screenShareOptionsRef.current = null;
     if (rtcChannelRef.current) {
       getSupabase().removeChannel(rtcChannelRef.current);
       rtcChannelRef.current = null;
@@ -405,10 +427,13 @@ export function useVoiceCall(member: Member) {
 
         const videoTrack = stream.getVideoTracks()[0];
         videoTrack.onended = () => {
+          screenShareOptionsRef.current = null;
           setVideoTrack(null, "none");
           setScreenAudioTrack(null);
         };
+        screenShareOptionsRef.current = options;
         setVideoTrack(videoTrack, "screen");
+        videoSendersRef.current.forEach((sender) => applyScreenShareEncoding(sender, options));
 
         const audioTrack = stream.getAudioTracks()[0];
         if (audioTrack) setScreenAudioTrack(audioTrack);
@@ -420,6 +445,7 @@ export function useVoiceCall(member: Member) {
   );
 
   const stopScreenShare = useCallback(() => {
+    screenShareOptionsRef.current = null;
     setVideoTrack(null, "none");
     setScreenAudioTrack(null);
   }, [setVideoTrack, setScreenAudioTrack]);

@@ -1,4 +1,4 @@
-import { IconHash, IconSettings, IconVolume2 } from "@tabler/icons-react";
+import { IconHash, IconSettings, IconVolume2, IconX } from "@tabler/icons-react";
 import type { Channel, Member } from "@/lib/types";
 import type { MediaMode, PeerCallState, ScreenShareOptions } from "@/lib/useVoiceCall";
 import { Avatar } from "./Avatar";
@@ -22,6 +22,8 @@ interface ChannelSidebarProps {
   onStopScreenShare: () => void;
   onLeaveVoice: () => void;
   voiceError: string | null;
+  mobileOpen: boolean;
+  onCloseMobile: () => void;
 }
 
 export function ChannelSidebar({
@@ -41,14 +43,23 @@ export function ChannelSidebar({
   onStopScreenShare,
   onLeaveVoice,
   voiceError,
+  mobileOpen,
+  onCloseMobile,
 }: ChannelSidebarProps) {
   const textChannels = channels.filter((c) => c.type === "text");
   const voiceChannels = channels.filter((c) => c.type === "voice");
 
   return (
-    <div className="flex w-[220px] shrink-0 flex-col bg-vc-sidebar">
-      <div className="border-b border-vc-border px-4 py-3.5 font-medium text-vc-accent">
+    <div
+      className={`fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-vc-sidebar transition-transform duration-200 md:static md:z-auto md:w-[220px] md:translate-x-0 ${
+        mobileOpen ? "translate-x-0" : "-translate-x-full"
+      }`}
+    >
+      <div className="flex items-center justify-between border-b border-vc-border px-4 py-3.5 font-medium text-vc-accent">
         Vortex Call
+        <button onClick={onCloseMobile} className="text-vc-text-muted md:hidden" aria-label="Fechar menu">
+          <IconX size={18} />
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 py-3">
@@ -58,7 +69,10 @@ export function ChannelSidebar({
           return (
             <button
               key={channel.id}
-              onClick={() => onSelectChannel(channel.id)}
+              onClick={() => {
+                onSelectChannel(channel.id);
+                onCloseMobile();
+              }}
               className={`flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-sm ${
                 active
                   ? "bg-vc-accent-soft font-medium text-vc-accent"
@@ -79,7 +93,10 @@ export function ChannelSidebar({
           return (
             <div key={channel.id} className="mt-0.5">
               <button
-                onClick={() => onJoinVoice(channel.id)}
+                onClick={() => {
+                  onJoinVoice(channel.id);
+                  onCloseMobile();
+                }}
                 className={`flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-sm ${
                   joined ? "bg-vc-accent-soft text-vc-accent" : "text-vc-text-muted hover:bg-vc-hover hover:text-vc-text"
                 }`}

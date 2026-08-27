@@ -1,6 +1,6 @@
 "use client";
 
-import { IconHash, IconPaperclip, IconSend2, IconVolume2 } from "@tabler/icons-react";
+import { IconHash, IconMenu2, IconPaperclip, IconSend2, IconUsers, IconVolume2 } from "@tabler/icons-react";
 import { useState } from "react";
 import type { Channel, Member, Message } from "@/lib/types";
 import { Avatar } from "./Avatar";
@@ -10,13 +10,24 @@ interface ChatAreaProps {
   messages: Message[];
   members: Member[];
   onSendMessage: (content: string) => void;
+  onOpenDrawer?: () => void;
+  onOpenMembers?: () => void;
+  hideMobileHeader?: boolean;
 }
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
-export function ChatArea({ channel, messages, members, onSendMessage }: ChatAreaProps) {
+export function ChatArea({
+  channel,
+  messages,
+  members,
+  onSendMessage,
+  onOpenDrawer,
+  onOpenMembers,
+  hideMobileHeader,
+}: ChatAreaProps) {
   const [draft, setDraft] = useState("");
 
   function handleSubmit(e: React.FormEvent) {
@@ -29,13 +40,27 @@ export function ChatArea({ channel, messages, members, onSendMessage }: ChatArea
 
   return (
     <div className="flex min-w-0 flex-1 flex-col bg-vc-chat">
-      <div className="flex items-center gap-2 border-b border-vc-border px-4 py-3">
+      <div
+        className={`items-center gap-2 border-b border-vc-border px-4 py-3 ${
+          hideMobileHeader ? "hidden md:flex" : "flex"
+        }`}
+      >
+        {onOpenDrawer && (
+          <button onClick={onOpenDrawer} className="-ml-1 shrink-0 text-vc-text-muted md:hidden" aria-label="Abrir menu">
+            <IconMenu2 size={20} />
+          </button>
+        )}
         {channel.type === "voice" ? (
           <IconVolume2 size={18} className="shrink-0 text-vc-text-muted" />
         ) : (
           <IconHash size={18} className="shrink-0 text-vc-text-muted" />
         )}
         <span className="truncate font-medium text-vc-text">{channel.name}</span>
+        {onOpenMembers && (
+          <button onClick={onOpenMembers} className="ml-auto shrink-0 text-vc-text-muted md:hidden" aria-label="Ver membros">
+            <IconUsers size={20} />
+          </button>
+        )}
       </div>
 
       <div className="flex-1 space-y-3.5 overflow-y-auto px-4 py-3.5">
