@@ -85,6 +85,79 @@ function applyScreenShareEncoding(sender: RTCRtpSender, options: ScreenShareOpti
   sender.setParameters(params).catch(() => {});
 }
 
+// Same threshold useSpeaking.ts already uses to drive the pink speaking
+// ring — reused here because it's already proven to reliably tell voice
+// apart from typical mic-level room noise in this app.
+const GATE_THRESHOLD = 20;
+const GATE_ATTACK = 0.02; // opens almost instantly when you start talking
+const GATE_RELEASE = 0.4; // stays open ~0.4s after, so word endings don't clip
+const GATE_FLOOR = 0.12; // attenuates rather than hard-mutes between words, so it never sounds like it's cutting in and out
+
+interface MicAcquisition {
+  stream: MediaStream;
+  cleanup: () => void;
+}
+
+// Browser-native `noiseSuppression` constraints are supposed to filter
+// background noise, but how audible the effect is varies a lot by
+// browser/OS/mic and isn't something we can guarantee. This adds a real,
+// verifiable noise gate on top: while gated, the mic is silenced down to
+// GATE_FLOOR whenever the same speaking-detection logic used elsewhere in
+// this app says nobody's talking, and opens back up the instant they do.
+async function acquireMicStream(gated: boolean): Promise<MicAcquisition> {
+  const rawStream = await navigator.mediaDevices.getUserMedia({
+    audio: {
+      noiseSuppression: { ideal: gated },
+      echoCancellation: { ideal: true },
+      autoGainControl: { ideal: true },
+    },
+  });
+
+  if (!gated) {
+    return { stream: rawStream, cleanup: () => rawStream.getTracks().forEach((t) => t.stop()) };
+  }
+
+  const ctx = new AudioContext();
+  const source = ctx.createMediaStreamSource(rawStream);
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 512;
+  analyser.smoothingTimeConstant = 0.6;
+  const gain = ctx.createGain();
+  gain.gain.value = GATE_FLOOR;
+  const destination = ctx.createMediaStreamDestination();
+  source.connect(analyser);
+  source.connect(gain);
+  gain.connect(destination);
+
+  const data = new Uint8Array(analyser.frequencyBinCount);
+  // setInterval, not requestAnimationFrame: rAF pauses entirely on a
+  // backgrounded/minimized tab, which would freeze the gate — silently
+  // stuck shut if you were quiet the moment you tabbed away, muting you
+  // until you tab back. A timer keeps running (just throttled) in the
+  // background, so the gate stays responsive while alt-tabbed into a game.
+  function tick() {
+    analyser.getByteFrequencyData(data);
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) sum += data[i];
+    const speaking = sum / data.length > GATE_THRESHOLD;
+    const now = ctx.currentTime;
+    gain.gain.setTargetAtTime(speaking ? 1 : GATE_FLOOR, now, speaking ? GATE_ATTACK : GATE_RELEASE);
+  }
+  const intervalId = window.setInterval(tick, 50);
+
+  return {
+    stream: destination.stream,
+    cleanup: () => {
+      window.clearInterval(intervalId);
+      source.disconnect();
+      analyser.disconnect();
+      gain.disconnect();
+      ctx.close();
+      rawStream.getTracks().forEach((t) => t.stop());
+    },
+  };
+}
+
 export function useVoiceCall(member: Member) {
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [micEnabled, setMicEnabled] = useState(true);
@@ -104,6 +177,7 @@ export function useVoiceCall(member: Member) {
   const makingOfferRef = useRef<Map<string, boolean>>(new Map());
   const ignoreOfferRef = useRef<Map<string, boolean>>(new Map());
   const micStreamRef = useRef<MediaStream | null>(null);
+  const micCleanupRef = useRef<(() => void) | null>(null);
   const micSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
   const videoSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
   const localVideoTrackRef = useRef<MediaStreamTrack | null>(null);
@@ -258,7 +332,8 @@ export function useVoiceCall(member: Member) {
     politeRef.current.clear();
     makingOfferRef.current.clear();
     ignoreOfferRef.current.clear();
-    micStreamRef.current?.getTracks().forEach((t) => t.stop());
+    micCleanupRef.current?.();
+    micCleanupRef.current = null;
     micStreamRef.current = null;
     localVideoTrackRef.current?.stop();
     localVideoTrackRef.current = null;
@@ -284,19 +359,16 @@ export function useVoiceCall(member: Member) {
       if (activeChannelId) leave();
 
       setError(null);
-      let micStream: MediaStream;
+      let acquisition: MicAcquisition;
       try {
-        // `ideal` (not a plain boolean) so an unsupported device/browser
-        // just skips it instead of failing getUserMedia entirely.
-        micStream = await navigator.mediaDevices.getUserMedia({
-          audio: { noiseSuppression: { ideal: noiseSuppression } },
-        });
+        acquisition = await acquireMicStream(noiseSuppression);
       } catch {
         setError("Não deu pra acessar o microfone. Verifique a permissão do navegador.");
         return;
       }
-      micStreamRef.current = micStream;
-      setLocalAudioStream(micStream);
+      micCleanupRef.current = acquisition.cleanup;
+      micStreamRef.current = acquisition.stream;
+      setLocalAudioStream(acquisition.stream);
       setActiveChannelId(channelId);
 
       iceServersRef.current = await fetchIceServers();
@@ -416,22 +488,17 @@ export function useVoiceCall(member: Member) {
     // Not in a call yet — just remember the preference for the next join().
     if (!micStreamRef.current) return;
 
-    // Re-applying noiseSuppression via applyConstraints() on an already-live
-    // track doesn't reliably reconfigure Chrome's native audio processing —
-    // it silently no-ops in practice. Re-acquiring the mic with the new
-    // constraint and swapping the track on every connection (same approach
-    // setVideoTrack already uses for camera/screen-share) actually works.
     try {
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        audio: { noiseSuppression: { ideal: next } },
-      });
-      const newTrack = newStream.getAudioTracks()[0];
+      const acquisition = await acquireMicStream(next);
+      const newTrack = acquisition.stream.getAudioTracks()[0];
       newTrack.enabled = micEnabled;
 
       micSendersRef.current.forEach((sender) => sender.replaceTrack(newTrack));
-      micStreamRef.current.getTracks().forEach((t) => t.stop());
-      micStreamRef.current = newStream;
-      setLocalAudioStream(newStream);
+
+      micCleanupRef.current?.();
+      micCleanupRef.current = acquisition.cleanup;
+      micStreamRef.current = acquisition.stream;
+      setLocalAudioStream(acquisition.stream);
     } catch {
       setNoiseSuppression(!next);
     }

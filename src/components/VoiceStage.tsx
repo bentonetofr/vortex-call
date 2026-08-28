@@ -9,6 +9,8 @@ interface VoiceStageProps {
   localMode: MediaMode;
   micEnabled: boolean;
   peers: Record<string, PeerCallState>;
+  micVolumes: Record<string, number>;
+  onMicVolumeChange: (peerId: string, volume: number) => void;
   screenVolumes: Record<string, number>;
   onScreenVolumeChange: (peerId: string, volume: number) => void;
 }
@@ -20,6 +22,8 @@ export function VoiceStage({
   localMode,
   micEnabled,
   peers,
+  micVolumes,
+  onMicVolumeChange,
   screenVolumes,
   onScreenVolumeChange,
 }: VoiceStageProps) {
@@ -47,6 +51,10 @@ export function VoiceStage({
           audioStream={peer.audioStream}
           micEnabled={peer.micEnabled}
           isScreen={peer.mediaMode === "screen"}
+          micVolume={peer.mediaMode === "screen" ? (micVolumes[peerId] ?? 1) : undefined}
+          onMicVolumeChange={
+            peer.mediaMode === "screen" ? (volume) => onMicVolumeChange(peerId, volume) : undefined
+          }
           volume={peer.screenAudioStream ? (screenVolumes[peerId] ?? 1) : undefined}
           onVolumeChange={
             peer.screenAudioStream ? (volume) => onScreenVolumeChange(peerId, volume) : undefined

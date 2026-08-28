@@ -14,6 +14,8 @@ interface ParticipantTileProps {
   micEnabled: boolean;
   isScreen?: boolean;
   muted?: boolean;
+  micVolume?: number;
+  onMicVolumeChange?: (volume: number) => void;
   volume?: number;
   onVolumeChange?: (volume: number) => void;
 }
@@ -27,6 +29,8 @@ export function ParticipantTile({
   micEnabled,
   isScreen,
   muted,
+  micVolume,
+  onMicVolumeChange,
   volume,
   onVolumeChange,
 }: ParticipantTileProps) {
@@ -55,7 +59,7 @@ export function ParticipantTile({
       className="relative flex aspect-video items-center justify-center overflow-hidden rounded-lg bg-vc-sidebar transition-shadow"
       style={{ boxShadow: speaking ? "0 0 0 3px #ec4899" : "0 0 0 0 transparent" }}
       onContextMenu={
-        onVolumeChange
+        onVolumeChange || onMicVolumeChange
           ? (e) => {
               e.preventDefault();
               setShowVolumePanel(true);
@@ -86,26 +90,48 @@ export function ParticipantTile({
           <IconMaximize size={13} />
         </button>
       )}
-      {showVolumePanel && onVolumeChange && (
+      {showVolumePanel && (onVolumeChange || onMicVolumeChange) && (
         <div
           ref={volumePanelRef}
-          className="absolute top-2 left-2 z-10 w-40 rounded-lg bg-vc-sidebar/95 p-3 shadow-lg"
+          className="absolute top-2 left-2 z-10 w-44 rounded-lg bg-vc-sidebar/95 p-3 shadow-lg"
           onContextMenu={(e) => e.preventDefault()}
         >
-          <div className="mb-1.5 flex items-center justify-between text-[11px] text-vc-text-muted">
-            <span>Volume da transmissão</span>
-            <span>{Math.round((volume ?? 1) * 100)}%</span>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={2}
-            step={0.05}
-            value={volume ?? 1}
-            onChange={(e) => onVolumeChange(Number(e.target.value))}
-            className="w-full accent-vc-accent"
-            aria-label="Volume da transmissão"
-          />
+          {onMicVolumeChange && (
+            <div className={onVolumeChange ? "mb-2.5" : ""}>
+              <div className="mb-1.5 flex items-center justify-between text-[11px] text-vc-text-muted">
+                <span>Volume do usuário</span>
+                <span>{Math.round((micVolume ?? 1) * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={2}
+                step={0.05}
+                value={micVolume ?? 1}
+                onChange={(e) => onMicVolumeChange(Number(e.target.value))}
+                className="w-full accent-vc-accent"
+                aria-label="Volume do usuário"
+              />
+            </div>
+          )}
+          {onVolumeChange && (
+            <div>
+              <div className="mb-1.5 flex items-center justify-between text-[11px] text-vc-text-muted">
+                <span>Volume da transmissão</span>
+                <span>{Math.round((volume ?? 1) * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={2}
+                step={0.05}
+                value={volume ?? 1}
+                onChange={(e) => onVolumeChange(Number(e.target.value))}
+                className="w-full accent-vc-accent"
+                aria-label="Volume da transmissão"
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

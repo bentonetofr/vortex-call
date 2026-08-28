@@ -24,6 +24,7 @@ export function AppShell({ member, onUpdateMember, onSignOut }: AppShellProps) {
   const [activeChannelId, setActiveChannelId] = useState("geral");
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [mobileMembersOpen, setMobileMembersOpen] = useState(false);
+  const [micVolumes, setMicVolumes] = useState<Record<string, number>>({});
   const [screenVolumes, setScreenVolumes] = useState<Record<string, number>>({});
   const [showSettings, setShowSettings] = useState(!member.onboarded);
   const channels = useChannels();
@@ -48,6 +49,10 @@ export function AppShell({ member, onUpdateMember, onSignOut }: AppShellProps) {
     setMobileMembersOpen(false);
   }
 
+  function handleMicVolumeChange(peerId: string, volume: number) {
+    setMicVolumes((prev) => ({ ...prev, [peerId]: volume }));
+  }
+
   function handleScreenVolumeChange(peerId: string, volume: number) {
     setScreenVolumes((prev) => ({ ...prev, [peerId]: volume }));
   }
@@ -57,6 +62,7 @@ export function AppShell({ member, onUpdateMember, onSignOut }: AppShellProps) {
       {voiceCall.activeChannelId && (
         <PeerAudioPlayer
           peers={voiceCall.peers}
+          micVolumes={micVolumes}
           screenVolumes={screenVolumes}
           deafened={voiceCall.deafened}
         />
@@ -109,6 +115,8 @@ export function AppShell({ member, onUpdateMember, onSignOut }: AppShellProps) {
             peers={voiceCall.peers}
             onOpenDrawer={() => setMobileDrawerOpen(true)}
             onOpenMembers={() => setMobileMembersOpen(true)}
+            micVolumes={micVolumes}
+            onMicVolumeChange={handleMicVolumeChange}
             screenVolumes={screenVolumes}
             onScreenVolumeChange={handleScreenVolumeChange}
           />

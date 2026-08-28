@@ -22,6 +22,8 @@ interface VoiceRoomViewProps {
   peers: Record<string, PeerCallState>;
   onOpenDrawer: () => void;
   onOpenMembers: () => void;
+  micVolumes: Record<string, number>;
+  onMicVolumeChange: (peerId: string, volume: number) => void;
   screenVolumes: Record<string, number>;
   onScreenVolumeChange: (peerId: string, volume: number) => void;
 }
@@ -41,6 +43,8 @@ export function VoiceRoomView({
   peers,
   onOpenDrawer,
   onOpenMembers,
+  micVolumes,
+  onMicVolumeChange,
   screenVolumes,
   onScreenVolumeChange,
 }: VoiceRoomViewProps) {
@@ -74,6 +78,8 @@ export function VoiceRoomView({
             localMode={mediaMode}
             micEnabled={micEnabled}
             peers={peers}
+            micVolumes={micVolumes}
+            onMicVolumeChange={onMicVolumeChange}
             screenVolumes={screenVolumes}
             onScreenVolumeChange={onScreenVolumeChange}
           />
