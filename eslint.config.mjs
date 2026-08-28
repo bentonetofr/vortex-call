@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // bot/ is its own separate Node.js project (own tsconfig, own
+    // package.json) — not part of the Next.js app being linted here.
+    "bot/**",
   ]),
 ]);
 

@@ -39,7 +39,7 @@ export function ChatArea({
   }
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col bg-vc-chat">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-vc-chat">
       <div
         className={`items-center gap-2 border-b border-vc-border px-4 py-3 ${
           hideMobileHeader ? "hidden md:flex" : "flex"
