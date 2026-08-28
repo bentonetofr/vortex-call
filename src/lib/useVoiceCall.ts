@@ -104,6 +104,7 @@ export function useVoiceCall(member: Member) {
   const makingOfferRef = useRef<Map<string, boolean>>(new Map());
   const ignoreOfferRef = useRef<Map<string, boolean>>(new Map());
   const micStreamRef = useRef<MediaStream | null>(null);
+  const micSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
   const videoSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
   const localVideoTrackRef = useRef<MediaStreamTrack | null>(null);
   const screenAudioSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
@@ -128,6 +129,7 @@ export function useVoiceCall(member: Member) {
   const closePeer = useCallback((peerId: string) => {
     connectionsRef.current.get(peerId)?.close();
     connectionsRef.current.delete(peerId);
+    micSendersRef.current.delete(peerId);
     videoSendersRef.current.delete(peerId);
     screenAudioSendersRef.current.delete(peerId);
     politeRef.current.delete(peerId);
@@ -153,7 +155,9 @@ export function useVoiceCall(member: Member) {
       ignoreOfferRef.current.set(peerId, false);
 
       if (micStreamRef.current) {
-        micStreamRef.current.getTracks().forEach((track) => pc!.addTrack(track, micStreamRef.current!));
+        micStreamRef.current.getTracks().forEach((track) => {
+          micSendersRef.current.set(peerId, pc!.addTrack(track, micStreamRef.current!));
+        });
       }
       if (localVideoTrackRef.current) {
         const stream = new MediaStream([localVideoTrackRef.current]);
@@ -248,6 +252,7 @@ export function useVoiceCall(member: Member) {
     if (rtcChannelRef.current) playLeaveSound();
     connectionsRef.current.forEach((pc) => pc.close());
     connectionsRef.current.clear();
+    micSendersRef.current.clear();
     videoSendersRef.current.clear();
     screenAudioSendersRef.current.clear();
     politeRef.current.clear();
@@ -404,13 +409,33 @@ export function useVoiceCall(member: Member) {
     } satisfies PresencePayload);
   }, [deafened, micEnabled, mediaMode, member]);
 
-  const toggleNoiseSuppression = useCallback(() => {
+  const toggleNoiseSuppression = useCallback(async () => {
     const next = !noiseSuppression;
     setNoiseSuppression(next);
-    micStreamRef.current?.getAudioTracks().forEach((track) => {
-      track.applyConstraints({ noiseSuppression: { ideal: next } }).catch(() => {});
-    });
-  }, [noiseSuppression]);
+
+    // Not in a call yet — just remember the preference for the next join().
+    if (!micStreamRef.current) return;
+
+    // Re-applying noiseSuppression via applyConstraints() on an already-live
+    // track doesn't reliably reconfigure Chrome's native audio processing —
+    // it silently no-ops in practice. Re-acquiring the mic with the new
+    // constraint and swapping the track on every connection (same approach
+    // setVideoTrack already uses for camera/screen-share) actually works.
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        audio: { noiseSuppression: { ideal: next } },
+      });
+      const newTrack = newStream.getAudioTracks()[0];
+      newTrack.enabled = micEnabled;
+
+      micSendersRef.current.forEach((sender) => sender.replaceTrack(newTrack));
+      micStreamRef.current.getTracks().forEach((t) => t.stop());
+      micStreamRef.current = newStream;
+      setLocalAudioStream(newStream);
+    } catch {
+      setNoiseSuppression(!next);
+    }
+  }, [noiseSuppression, micEnabled]);
 
   const setVideoTrack = useCallback(
     (track: MediaStreamTrack | null, mode: MediaMode) => {
