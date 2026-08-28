@@ -9,6 +9,8 @@ interface VoiceStageProps {
   localMode: MediaMode;
   micEnabled: boolean;
   peers: Record<string, PeerCallState>;
+  screenVolumes: Record<string, number>;
+  onScreenVolumeChange: (peerId: string, volume: number) => void;
 }
 
 export function VoiceStage({
@@ -18,6 +20,8 @@ export function VoiceStage({
   localMode,
   micEnabled,
   peers,
+  screenVolumes,
+  onScreenVolumeChange,
 }: VoiceStageProps) {
   const peerList = Object.entries(peers);
 
@@ -41,6 +45,10 @@ export function VoiceStage({
           audioStream={peer.audioStream}
           micEnabled={peer.micEnabled}
           isScreen={peer.mediaMode === "screen"}
+          volume={peer.screenAudioStream ? (screenVolumes[peerId] ?? 1) : undefined}
+          onVolumeChange={
+            peer.screenAudioStream ? (volume) => onScreenVolumeChange(peerId, volume) : undefined
+          }
         />
       ))}
     </div>

@@ -22,6 +22,8 @@ interface VoiceRoomViewProps {
   peers: Record<string, PeerCallState>;
   onOpenDrawer: () => void;
   onOpenMembers: () => void;
+  screenVolumes: Record<string, number>;
+  onScreenVolumeChange: (peerId: string, volume: number) => void;
 }
 
 export function VoiceRoomView({
@@ -39,6 +41,8 @@ export function VoiceRoomView({
   peers,
   onOpenDrawer,
   onOpenMembers,
+  screenVolumes,
+  onScreenVolumeChange,
 }: VoiceRoomViewProps) {
   const [mobileTab, setMobileTab] = useState<"stage" | "chat">("stage");
 
@@ -70,6 +74,8 @@ export function VoiceRoomView({
             localMode={mediaMode}
             micEnabled={micEnabled}
             peers={peers}
+            screenVolumes={screenVolumes}
+            onScreenVolumeChange={onScreenVolumeChange}
           />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-3">

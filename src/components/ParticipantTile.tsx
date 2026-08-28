@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { IconMaximize, IconMicrophoneOff, IconScreenShare } from "@tabler/icons-react";
 import { useSpeaking } from "@/lib/useSpeaking";
 import { Avatar } from "./Avatar";
@@ -13,6 +13,8 @@ interface ParticipantTileProps {
   micEnabled: boolean;
   isScreen?: boolean;
   muted?: boolean;
+  volume?: number;
+  onVolumeChange?: (volume: number) => void;
 }
 
 export function ParticipantTile({
@@ -23,18 +25,41 @@ export function ParticipantTile({
   micEnabled,
   isScreen,
   muted,
+  volume,
+  onVolumeChange,
 }: ParticipantTileProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const volumePanelRef = useRef<HTMLDivElement>(null);
+  const [showVolumePanel, setShowVolumePanel] = useState(false);
   const speaking = useSpeaking(micEnabled ? audioStream : null);
 
   useEffect(() => {
     if (videoRef.current) videoRef.current.srcObject = videoStream;
   }, [videoStream]);
 
+  useEffect(() => {
+    if (!showVolumePanel) return;
+    function handlePointerDown(e: PointerEvent) {
+      if (volumePanelRef.current && !volumePanelRef.current.contains(e.target as Node)) {
+        setShowVolumePanel(false);
+      }
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [showVolumePanel]);
+
   return (
     <div
       className="relative flex aspect-video items-center justify-center overflow-hidden rounded-lg bg-vc-sidebar transition-shadow"
       style={{ boxShadow: speaking ? "0 0 0 3px #ec4899" : "0 0 0 0 transparent" }}
+      onContextMenu={
+        onVolumeChange
+          ? (e) => {
+              e.preventDefault();
+              setShowVolumePanel(true);
+            }
+          : undefined
+      }
     >
       {videoStream ? (
         <video ref={videoRef} autoPlay playsInline muted={muted} className="h-full w-full object-cover" />
@@ -58,6 +83,28 @@ export function ParticipantTile({
         >
           <IconMaximize size={13} />
         </button>
+      )}
+      {showVolumePanel && onVolumeChange && (
+        <div
+          ref={volumePanelRef}
+          className="absolute top-2 left-2 z-10 w-40 rounded-lg bg-vc-sidebar/95 p-3 shadow-lg"
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          <div className="mb-1.5 flex items-center justify-between text-[11px] text-vc-text-muted">
+            <span>Volume da transmissão</span>
+            <span>{Math.round((volume ?? 1) * 100)}%</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={2}
+            step={0.05}
+            value={volume ?? 1}
+            onChange={(e) => onVolumeChange(Number(e.target.value))}
+            className="w-full accent-vc-accent"
+            aria-label="Volume da transmissão"
+          />
+        </div>
       )}
     </div>
   );

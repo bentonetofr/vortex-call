@@ -20,6 +20,7 @@ export function AppShell({ member }: AppShellProps) {
   const [activeChannelId, setActiveChannelId] = useState("geral");
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [mobileMembersOpen, setMobileMembersOpen] = useState(false);
+  const [screenVolumes, setScreenVolumes] = useState<Record<string, number>>({});
   const channels = useChannels();
   const members = useMembers(member);
   const messages = useMessages(activeChannelId, member.id);
@@ -41,9 +42,15 @@ export function AppShell({ member }: AppShellProps) {
     setMobileMembersOpen(false);
   }
 
+  function handleScreenVolumeChange(peerId: string, volume: number) {
+    setScreenVolumes((prev) => ({ ...prev, [peerId]: volume }));
+  }
+
   return (
     <div className="flex h-screen overflow-hidden">
-      {voiceCall.activeChannelId && <PeerAudioPlayer peers={voiceCall.peers} />}
+      {voiceCall.activeChannelId && (
+        <PeerAudioPlayer peers={voiceCall.peers} screenVolumes={screenVolumes} />
+      )}
 
       {(mobileDrawerOpen || mobileMembersOpen) && (
         <div className="fixed inset-0 z-30 bg-black/50 md:hidden" onClick={closeMobileOverlays} />
@@ -86,6 +93,8 @@ export function AppShell({ member }: AppShellProps) {
             peers={voiceCall.peers}
             onOpenDrawer={() => setMobileDrawerOpen(true)}
             onOpenMembers={() => setMobileMembersOpen(true)}
+            screenVolumes={screenVolumes}
+            onScreenVolumeChange={handleScreenVolumeChange}
           />
         ) : (
           <ChatArea
