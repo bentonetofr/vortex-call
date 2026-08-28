@@ -138,7 +138,7 @@ export function ChannelSidebar({
                       <div
                         key={occupant.userId}
                         title={occupant.name}
-                        className="overflow-hidden rounded-t-full"
+                        className="flex items-end justify-center overflow-hidden rounded-b-full"
                         style={{ width: 16, height: 8 }}
                       >
                         <Avatar
