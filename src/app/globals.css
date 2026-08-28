@@ -38,6 +38,38 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
+/* App-wide scrollbar styling — thin, theme-colored, no arrow buttons,
+   instead of the chunky OS default. Applies everywhere (member list,
+   sidebar, chat, etc), not just one spot. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #ffffff2e transparent;
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #ffffff2e;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-vc-accent);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 /* Custom range-input look for volume sliders (ParticipantTile's volume
    panel) — the browser default is a thin, barely-visible track. The
    filled portion is painted via an inline `background` gradient set from
