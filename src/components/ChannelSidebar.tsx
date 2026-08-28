@@ -3,6 +3,7 @@ import type { Channel, Member } from "@/lib/types";
 import type { MediaMode, PeerCallState, ScreenShareOptions } from "@/lib/useVoiceCall";
 import type { VoiceRosterEntry } from "@/lib/useVoiceRoster";
 import { Avatar } from "./Avatar";
+import { NoiseSuppressionIcon } from "./NoiseSuppressionIcon";
 import { VoiceControls } from "./VoiceControls";
 import { VoiceOccupantRow } from "./VoiceOccupantRow";
 
@@ -35,6 +36,8 @@ interface ChannelSidebarProps {
   mobileOpen: boolean;
   onCloseMobile: () => void;
   onOpenSettings: () => void;
+  noiseSuppression: boolean;
+  onToggleNoiseSuppression: () => void;
 }
 
 export function ChannelSidebar({
@@ -60,6 +63,8 @@ export function ChannelSidebar({
   mobileOpen,
   onCloseMobile,
   onOpenSettings,
+  noiseSuppression,
+  onToggleNoiseSuppression,
 }: ChannelSidebarProps) {
   const textChannels = channels.filter((c) => c.type === "text");
   const voiceChannels = channels.filter((c) => c.type === "voice");
@@ -187,14 +192,37 @@ export function ChannelSidebar({
         />
       )}
 
-      <button
-        onClick={onOpenSettings}
-        className="flex items-center gap-2 border-t border-vc-border bg-vc-sidebar-footer px-2.5 py-2 text-left hover:bg-vc-hover"
-      >
-        <Avatar name={currentMember.name} color={currentMember.color} avatarUrl={currentMember.avatarUrl} size={26} />
-        <span className="min-w-0 flex-1 truncate text-[12.5px] text-vc-text">{currentMember.name}</span>
-        <IconSettings size={16} className="shrink-0 text-vc-text-muted" />
-      </button>
+      <div className="flex items-center gap-1 border-t border-vc-border bg-vc-sidebar-footer px-2 py-2">
+        <button
+          onClick={onOpenSettings}
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-0.5 py-0.5 text-left hover:bg-vc-hover"
+        >
+          <Avatar
+            name={currentMember.name}
+            color={currentMember.color}
+            avatarUrl={currentMember.avatarUrl}
+            size={26}
+          />
+          <span className="min-w-0 flex-1 truncate text-[12.5px] text-vc-text">{currentMember.name}</span>
+        </button>
+        <button
+          onClick={onToggleNoiseSuppression}
+          aria-label={noiseSuppression ? "Desativar supressão de ruído" : "Ativar supressão de ruído"}
+          title={noiseSuppression ? "Supressão de ruído ligada" : "Supressão de ruído desligada"}
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${
+            noiseSuppression ? "text-vc-accent" : "text-vc-text-muted hover:bg-vc-hover"
+          }`}
+        >
+          <NoiseSuppressionIcon size={16} />
+        </button>
+        <button
+          onClick={onOpenSettings}
+          aria-label="Configurações"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-vc-text-muted hover:bg-vc-hover"
+        >
+          <IconSettings size={16} />
+        </button>
+      </div>
     </div>
   );
 }

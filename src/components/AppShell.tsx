@@ -89,6 +89,8 @@ export function AppShell({ member, onUpdateMember, onSignOut }: AppShellProps) {
         mobileOpen={mobileDrawerOpen}
         onCloseMobile={() => setMobileDrawerOpen(false)}
         onOpenSettings={() => setShowSettings(true)}
+        noiseSuppression={voiceCall.noiseSuppression}
+        onToggleNoiseSuppression={voiceCall.toggleNoiseSuppression}
       />
       {activeChannel &&
         (activeChannel.type === "voice" ? (

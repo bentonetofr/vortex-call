@@ -89,6 +89,9 @@ export function useVoiceCall(member: Member) {
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [micEnabled, setMicEnabled] = useState(true);
   const [deafened, setDeafened] = useState(false);
+  // A preference, not call state — unlike mic/deafen it's intentionally not
+  // reset in leave(), so it carries over from one call to the next.
+  const [noiseSuppression, setNoiseSuppression] = useState(true);
   const [mediaMode, setMediaMode] = useState<MediaMode>("none");
   const [localVideoStream, setLocalVideoStream] = useState<MediaStream | null>(null);
   const [localAudioStream, setLocalAudioStream] = useState<MediaStream | null>(null);
@@ -278,7 +281,11 @@ export function useVoiceCall(member: Member) {
       setError(null);
       let micStream: MediaStream;
       try {
-        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // `ideal` (not a plain boolean) so an unsupported device/browser
+        // just skips it instead of failing getUserMedia entirely.
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: { noiseSuppression: { ideal: noiseSuppression } },
+        });
       } catch {
         setError("Não deu pra acessar o microfone. Verifique a permissão do navegador.");
         return;
@@ -350,7 +357,7 @@ export function useVoiceCall(member: Member) {
           }
         });
     },
-    [activeChannelId, leave, member, ensureConnection, closePeer, handleSignal],
+    [activeChannelId, leave, member, ensureConnection, closePeer, handleSignal, noiseSuppression],
   );
 
   const toggleMic = useCallback(() => {
@@ -396,6 +403,14 @@ export function useVoiceCall(member: Member) {
       mediaMode,
     } satisfies PresencePayload);
   }, [deafened, micEnabled, mediaMode, member]);
+
+  const toggleNoiseSuppression = useCallback(() => {
+    const next = !noiseSuppression;
+    setNoiseSuppression(next);
+    micStreamRef.current?.getAudioTracks().forEach((track) => {
+      track.applyConstraints({ noiseSuppression: { ideal: next } }).catch(() => {});
+    });
+  }, [noiseSuppression]);
 
   const setVideoTrack = useCallback(
     (track: MediaStreamTrack | null, mode: MediaMode) => {
@@ -513,6 +528,7 @@ export function useVoiceCall(member: Member) {
     activeChannelId,
     micEnabled,
     deafened,
+    noiseSuppression,
     mediaMode,
     peers,
     localVideoStream,
@@ -522,6 +538,7 @@ export function useVoiceCall(member: Member) {
     leave,
     toggleMic,
     toggleDeafen,
+    toggleNoiseSuppression,
     toggleCamera,
     startScreenShare,
     stopScreenShare,
