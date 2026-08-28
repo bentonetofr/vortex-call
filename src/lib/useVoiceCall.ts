@@ -4,11 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getSupabase } from "./supabase";
 import {
+  playDeafenSound,
   playJoinSound,
   playLeaveSound,
   playMuteSound,
   playPeerJoinSound,
   playPeerLeaveSound,
+  playUndeafenSound,
   playUnmuteSound,
 } from "./sounds";
 import { fetchIceServers } from "./webrtc";
@@ -22,6 +24,7 @@ export interface PeerCallState {
   screenAudioStream: MediaStream | null;
   mediaMode: MediaMode;
   micEnabled: boolean;
+  deafened: boolean;
   name: string;
   color: string;
   avatarUrl: string | null;
@@ -40,6 +43,7 @@ interface PresencePayload {
   color: string;
   avatarUrl: string | null;
   micEnabled: boolean;
+  deafened: boolean;
   mediaMode: MediaMode;
 }
 
@@ -57,6 +61,7 @@ const emptyPeer = (name: string, color: string, avatarUrl: string | null): PeerC
   screenAudioStream: null,
   mediaMode: "none",
   micEnabled: true,
+  deafened: false,
   name,
   color,
   avatarUrl,
@@ -83,6 +88,7 @@ function applyScreenShareEncoding(sender: RTCRtpSender, options: ScreenShareOpti
 export function useVoiceCall(member: Member) {
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [micEnabled, setMicEnabled] = useState(true);
+  const [deafened, setDeafened] = useState(false);
   const [mediaMode, setMediaMode] = useState<MediaMode>("none");
   const [localVideoStream, setLocalVideoStream] = useState<MediaStream | null>(null);
   const [localAudioStream, setLocalAudioStream] = useState<MediaStream | null>(null);
@@ -260,6 +266,7 @@ export function useVoiceCall(member: Member) {
     setLocalAudioStream(null);
     setMediaMode("none");
     setMicEnabled(true);
+    setDeafened(false);
     setActiveChannelId(null);
   }, []);
 
@@ -306,6 +313,7 @@ export function useVoiceCall(member: Member) {
                 ...(prev[peerId] ?? emptyPeer(meta.name, meta.color, meta.avatarUrl)),
                 mediaMode: meta.mediaMode,
                 micEnabled: meta.micEnabled,
+                deafened: meta.deafened,
                 name: meta.name,
                 color: meta.color,
                 avatarUrl: meta.avatarUrl,
@@ -333,8 +341,9 @@ export function useVoiceCall(member: Member) {
               userId: member.id,
               name: member.name,
               color: member.color,
-      avatarUrl: member.avatarUrl,
+              avatarUrl: member.avatarUrl,
               micEnabled: true,
+              deafened: false,
               mediaMode: "none",
             } satisfies PresencePayload);
             playJoinSound();
@@ -356,9 +365,37 @@ export function useVoiceCall(member: Member) {
       color: member.color,
       avatarUrl: member.avatarUrl,
       micEnabled: next,
+      deafened,
       mediaMode,
     } satisfies PresencePayload);
-  }, [micEnabled, mediaMode, member]);
+  }, [micEnabled, deafened, mediaMode, member]);
+
+  const toggleDeafen = useCallback(() => {
+    const next = !deafened;
+    setDeafened(next);
+
+    // Deafening also mutes the mic (matches the combined "mute + deafen"
+    // behavior this button represents). Undeafening does NOT auto-unmute —
+    // you still have to turn your mic back on yourself.
+    const nextMicEnabled = next && micEnabled ? false : micEnabled;
+    if (nextMicEnabled !== micEnabled) {
+      micStreamRef.current?.getAudioTracks().forEach((t) => (t.enabled = false));
+      setMicEnabled(false);
+    }
+
+    if (next) playDeafenSound();
+    else playUndeafenSound();
+
+    rtcChannelRef.current?.track({
+      userId: member.id,
+      name: member.name,
+      color: member.color,
+      avatarUrl: member.avatarUrl,
+      micEnabled: nextMicEnabled,
+      deafened: next,
+      mediaMode,
+    } satisfies PresencePayload);
+  }, [deafened, micEnabled, mediaMode, member]);
 
   const setVideoTrack = useCallback(
     (track: MediaStreamTrack | null, mode: MediaMode) => {
@@ -385,12 +422,13 @@ export function useVoiceCall(member: Member) {
         userId: member.id,
         name: member.name,
         color: member.color,
-      avatarUrl: member.avatarUrl,
+        avatarUrl: member.avatarUrl,
         micEnabled,
+        deafened,
         mediaMode: mode,
       } satisfies PresencePayload);
     },
-    [micEnabled, member],
+    [micEnabled, deafened, member],
   );
 
   const setScreenAudioTrack = useCallback((track: MediaStreamTrack | null) => {
@@ -474,6 +512,7 @@ export function useVoiceCall(member: Member) {
   return {
     activeChannelId,
     micEnabled,
+    deafened,
     mediaMode,
     peers,
     localVideoStream,
@@ -482,6 +521,7 @@ export function useVoiceCall(member: Member) {
     join,
     leave,
     toggleMic,
+    toggleDeafen,
     toggleCamera,
     startScreenShare,
     stopScreenShare,

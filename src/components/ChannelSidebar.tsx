@@ -23,8 +23,10 @@ interface ChannelSidebarProps {
   localAudioStream: MediaStream | null;
   onJoinVoice: (channelId: string) => void;
   micEnabled: boolean;
+  deafened: boolean;
   mediaMode: MediaMode;
   onToggleMic: () => void;
+  onToggleDeafen: () => void;
   onToggleCamera: () => void;
   onStartScreenShare: (options: ScreenShareOptions) => void;
   onStopScreenShare: () => void;
@@ -46,8 +48,10 @@ export function ChannelSidebar({
   localAudioStream,
   onJoinVoice,
   micEnabled,
+  deafened,
   mediaMode,
   onToggleMic,
+  onToggleDeafen,
   onToggleCamera,
   onStartScreenShare,
   onStopScreenShare,
@@ -124,6 +128,7 @@ export function ChannelSidebar({
                     avatarUrl={currentMember.avatarUrl}
                     audioStream={localAudioStream}
                     micEnabled={micEnabled}
+                    deafened={deafened}
                     label="Você"
                   />
                   {Object.entries(voicePeers).map(([peerId, peer]) => (
@@ -134,6 +139,7 @@ export function ChannelSidebar({
                       avatarUrl={peer.avatarUrl}
                       audioStream={peer.audioStream}
                       micEnabled={peer.micEnabled}
+                      deafened={peer.deafened}
                     />
                   ))}
                 </>
@@ -170,8 +176,10 @@ export function ChannelSidebar({
         <VoiceControls
           channelName={channels.find((c) => c.id === activeVoiceChannelId)?.name ?? ""}
           micEnabled={micEnabled}
+          deafened={deafened}
           mediaMode={mediaMode}
           onToggleMic={onToggleMic}
+          onToggleDeafen={onToggleDeafen}
           onToggleCamera={onToggleCamera}
           onStartScreenShare={onStartScreenShare}
           onStopScreenShare={onStopScreenShare}

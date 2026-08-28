@@ -11,13 +11,16 @@ import {
 } from "@tabler/icons-react";
 import { useState } from "react";
 import type { MediaMode, ScreenShareOptions } from "@/lib/useVoiceCall";
+import { DeafenIcon } from "./DeafenIcon";
 import { ScreenShareSettingsModal } from "./ScreenShareSettingsModal";
 
 interface VoiceControlsProps {
   channelName: string;
   micEnabled: boolean;
+  deafened: boolean;
   mediaMode: MediaMode;
   onToggleMic: () => void;
+  onToggleDeafen: () => void;
   onToggleCamera: () => void;
   onStartScreenShare: (options: ScreenShareOptions) => void;
   onStopScreenShare: () => void;
@@ -27,8 +30,10 @@ interface VoiceControlsProps {
 export function VoiceControls({
   channelName,
   micEnabled,
+  deafened,
   mediaMode,
   onToggleMic,
+  onToggleDeafen,
   onToggleCamera,
   onStartScreenShare,
   onStopScreenShare,
@@ -46,6 +51,13 @@ export function VoiceControls({
           className={`flex h-8 w-8 items-center justify-center rounded-md ${micEnabled ? "text-vc-text-muted hover:bg-vc-hover" : "bg-red-500/20 text-red-400"}`}
         >
           {micEnabled ? <IconMicrophone size={16} /> : <IconMicrophoneOff size={16} />}
+        </button>
+        <button
+          onClick={onToggleDeafen}
+          aria-label={deafened ? "Reativar áudio e microfone" : "Desativar áudio e microfone"}
+          className={`flex h-8 w-8 items-center justify-center rounded-md ${deafened ? "bg-red-500/20 text-red-400" : "text-vc-text-muted hover:bg-vc-hover"}`}
+        >
+          <DeafenIcon size={16} active={deafened} />
         </button>
         <button
           onClick={onToggleCamera}

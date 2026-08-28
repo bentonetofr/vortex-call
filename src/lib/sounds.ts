@@ -49,6 +49,18 @@ export function playUnmuteSound() {
   playTone(getAudioContext().currentTime, 540, 0.06, 0.1);
 }
 
+export function playDeafenSound() {
+  const now = getAudioContext().currentTime;
+  playTone(now, 320, 0.07, 0.1);
+  playTone(now + 0.05, 220, 0.12, 0.1);
+}
+
+export function playUndeafenSound() {
+  const now = getAudioContext().currentTime;
+  playTone(now, 420, 0.07, 0.1);
+  playTone(now + 0.05, 540, 0.1, 0.1);
+}
+
 export function playMessageSound() {
   const now = getAudioContext().currentTime;
   playTone(now, 880, 0.07, 0.05);

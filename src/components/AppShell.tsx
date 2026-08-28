@@ -55,7 +55,11 @@ export function AppShell({ member, onUpdateMember, onSignOut }: AppShellProps) {
   return (
     <div className="flex h-screen overflow-hidden">
       {voiceCall.activeChannelId && (
-        <PeerAudioPlayer peers={voiceCall.peers} screenVolumes={screenVolumes} />
+        <PeerAudioPlayer
+          peers={voiceCall.peers}
+          screenVolumes={screenVolumes}
+          deafened={voiceCall.deafened}
+        />
       )}
 
       {(mobileDrawerOpen || mobileMembersOpen) && (
@@ -73,8 +77,10 @@ export function AppShell({ member, onUpdateMember, onSignOut }: AppShellProps) {
         localAudioStream={voiceCall.localAudioStream}
         onJoinVoice={handleOpenVoice}
         micEnabled={voiceCall.micEnabled}
+        deafened={voiceCall.deafened}
         mediaMode={voiceCall.mediaMode}
         onToggleMic={voiceCall.toggleMic}
+        onToggleDeafen={voiceCall.toggleDeafen}
         onToggleCamera={voiceCall.toggleCamera}
         onStartScreenShare={voiceCall.startScreenShare}
         onStopScreenShare={voiceCall.stopScreenShare}
