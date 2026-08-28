@@ -1,6 +1,7 @@
 import { IconHash, IconSettings, IconVolume2, IconX } from "@tabler/icons-react";
 import type { Channel, Member } from "@/lib/types";
 import type { MediaMode, PeerCallState, ScreenShareOptions } from "@/lib/useVoiceCall";
+import type { VoiceRosterEntry } from "@/lib/useVoiceRoster";
 import { Avatar } from "./Avatar";
 import { VoiceControls } from "./VoiceControls";
 import { VoiceOccupantRow } from "./VoiceOccupantRow";
@@ -12,6 +13,7 @@ interface ChannelSidebarProps {
   onSelectChannel: (channelId: string) => void;
   activeVoiceChannelId: string | null;
   voicePeers: Record<string, PeerCallState>;
+  voiceRoster: Record<string, VoiceRosterEntry[]>;
   localAudioStream: MediaStream | null;
   onJoinVoice: (channelId: string) => void;
   micEnabled: boolean;
@@ -34,6 +36,7 @@ export function ChannelSidebar({
   onSelectChannel,
   activeVoiceChannelId,
   voicePeers,
+  voiceRoster,
   localAudioStream,
   onJoinVoice,
   micEnabled,
@@ -91,6 +94,7 @@ export function ChannelSidebar({
         {voiceError && <p className="px-2 pb-1 text-[11px] text-red-400">{voiceError}</p>}
         {voiceChannels.map((channel) => {
           const joined = channel.id === activeVoiceChannelId;
+          const preview = voiceRoster[channel.id] ?? [];
 
           return (
             <div key={channel.id} className="mt-0.5">
@@ -106,7 +110,7 @@ export function ChannelSidebar({
                 <IconVolume2 size={16} className="shrink-0" />
                 <span className="truncate">{channel.name}</span>
               </button>
-              {joined && (
+              {joined ? (
                 <>
                   <VoiceOccupantRow
                     name={currentMember.name}
@@ -127,6 +131,26 @@ export function ChannelSidebar({
                     />
                   ))}
                 </>
+              ) : (
+                preview.length > 0 && (
+                  <div className="flex items-center gap-1 py-0.5 pr-2 pl-6.5">
+                    {preview.map((occupant) => (
+                      <div
+                        key={occupant.userId}
+                        title={occupant.name}
+                        className="overflow-hidden rounded-t-full"
+                        style={{ width: 16, height: 8 }}
+                      >
+                        <Avatar
+                          name={occupant.name}
+                          color={occupant.color}
+                          avatarUrl={occupant.avatarUrl}
+                          size={16}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )
               )}
             </div>
           );

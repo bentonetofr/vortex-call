@@ -5,6 +5,7 @@ import { useChannels } from "@/lib/useChannels";
 import { useMembers } from "@/lib/useMembers";
 import { sendMessage, useMessages } from "@/lib/useMessages";
 import { useVoiceCall } from "@/lib/useVoiceCall";
+import { useVoiceRoster } from "@/lib/useVoiceRoster";
 import type { Member } from "@/lib/types";
 import { ChannelSidebar } from "./ChannelSidebar";
 import { ChatArea } from "./ChatArea";
@@ -29,6 +30,7 @@ export function AppShell({ member, onUpdateMember, onSignOut }: AppShellProps) {
   const members = useMembers(member);
   const messages = useMessages(activeChannelId, member.id);
   const voiceCall = useVoiceCall(member);
+  const voiceRoster = useVoiceRoster(member, voiceCall.activeChannelId);
 
   const activeChannel = channels.find((c) => c.id === activeChannelId);
 
@@ -67,6 +69,7 @@ export function AppShell({ member, onUpdateMember, onSignOut }: AppShellProps) {
         onSelectChannel={handleSelectChannel}
         activeVoiceChannelId={voiceCall.activeChannelId}
         voicePeers={voiceCall.peers}
+        voiceRoster={voiceRoster}
         localAudioStream={voiceCall.localAudioStream}
         onJoinVoice={handleOpenVoice}
         micEnabled={voiceCall.micEnabled}
