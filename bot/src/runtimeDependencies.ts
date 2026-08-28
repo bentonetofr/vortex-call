@@ -3,13 +3,14 @@ import { config } from "./config.js";
 
 interface Dependency {
   command: string;
+  versionArgs: string[];
   label: string;
   hint: string;
 }
 
-function checkExecutable({ command, label, hint }: Dependency): Promise<void> {
+function checkExecutable({ command, versionArgs, label, hint }: Dependency): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, ["--version"], { stdio: "ignore" });
+    const child = spawn(command, versionArgs, { stdio: "ignore" });
     const timer = setTimeout(() => {
       child.kill("SIGTERM");
       reject(new Error(`${label} demorou demais para responder. ${hint}`));
@@ -31,11 +32,13 @@ export async function verifyRuntimeDependencies(): Promise<void> {
   await Promise.all([
     checkExecutable({
       command: config.ffmpegPath,
+      versionArgs: ["-version"],
       label: "FFmpeg",
       hint: "Instale o FFmpeg ou ajuste FFMPEG_PATH no .env.",
     }),
     checkExecutable({
       command: config.ytDlpPath,
+      versionArgs: ["--version"],
       label: "yt-dlp",
       hint: "Instale o yt-dlp ou ajuste YTDLP_PATH no .env.",
     }),

@@ -8,6 +8,7 @@ import {
   IconMicrophoneOff,
   IconScreenShare,
 } from "@tabler/icons-react";
+import { useDominantColor } from "@/lib/useDominantColor";
 import { useSpeaking } from "@/lib/useSpeaking";
 import { Avatar } from "./Avatar";
 
@@ -93,6 +94,10 @@ export function ParticipantTile({
   const [showVolumePanel, setShowVolumePanel] = useState(false);
   const speaking = useSpeaking(micEnabled ? audioStream : null);
   const hasVolumeControls = Boolean(onOwnMicGainChange || onMicVolumeChange || onVolumeChange);
+  // Tints the tile with the most common color in the person's profile
+  // picture instead of the flat default background — falls back cleanly
+  // (stays null) if there's no photo or the color read fails (e.g. CORS).
+  const dominantColor = useDominantColor(avatarUrl);
 
   useEffect(() => {
     if (videoRef.current) videoRef.current.srcObject = videoStream;
@@ -113,7 +118,10 @@ export function ParticipantTile({
   return (
     <div
       className="relative flex aspect-video items-center justify-center overflow-hidden rounded-lg bg-vc-sidebar transition-shadow"
-      style={{ boxShadow: speaking ? "0 0 0 3px #ec4899" : "0 0 0 0 transparent" }}
+      style={{
+        boxShadow: speaking ? "0 0 0 3px #ec4899" : "0 0 0 0 transparent",
+        backgroundColor: dominantColor ?? undefined,
+      }}
       onContextMenu={
         hasVolumeControls
           ? (e) => {

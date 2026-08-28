@@ -58,6 +58,8 @@ export class AudioSource {
       const extractor =
         input.kind === "youtube"
           ? spawn(config.ytDlpPath, [
+              "--js-runtimes",
+              "node",
               "--no-playlist",
               "--no-progress",
               "--no-warnings",
