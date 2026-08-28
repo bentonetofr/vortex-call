@@ -3,8 +3,9 @@
 import { IconMenu2, IconPhone, IconUsers, IconVolume2 } from "@tabler/icons-react";
 import { useState } from "react";
 import type { Channel, Member, Message } from "@/lib/types";
-import type { MediaMode, PeerCallState } from "@/lib/useVoiceCall";
+import type { MediaMode, PeerCallState, ScreenShareOptions } from "@/lib/useVoiceCall";
 import { ChatArea } from "./ChatArea";
+import { VoiceCallBar } from "./VoiceCallBar";
 import { VoiceStage } from "./VoiceStage";
 
 interface VoiceRoomViewProps {
@@ -19,6 +20,13 @@ interface VoiceRoomViewProps {
   localAudioStream: MediaStream | null;
   mediaMode: MediaMode;
   micEnabled: boolean;
+  deafened: boolean;
+  onToggleMic: () => void;
+  onToggleDeafen: () => void;
+  onToggleCamera: () => void;
+  onStartScreenShare: (options: ScreenShareOptions) => void;
+  onStopScreenShare: () => void;
+  onLeave: () => void;
   peers: Record<string, PeerCallState>;
   onOpenDrawer: () => void;
   onOpenMembers: () => void;
@@ -42,6 +50,13 @@ export function VoiceRoomView({
   localAudioStream,
   mediaMode,
   micEnabled,
+  deafened,
+  onToggleMic,
+  onToggleDeafen,
+  onToggleCamera,
+  onStartScreenShare,
+  onStopScreenShare,
+  onLeave,
   peers,
   onOpenDrawer,
   onOpenMembers,
@@ -73,22 +88,37 @@ export function VoiceRoomView({
         </button>
       </div>
 
-      <div className={`min-h-0 flex-col bg-vc-chat md:flex md:flex-1 ${mobileTab === "chat" ? "hidden" : "flex flex-1"}`}>
+      <div
+        className={`relative min-h-0 flex-col bg-vc-chat md:flex md:flex-1 ${mobileTab === "chat" ? "hidden" : "flex flex-1"}`}
+      >
         {isConnected ? (
-          <VoiceStage
-            currentMember={currentMember}
-            localVideoStream={localVideoStream}
-            localAudioStream={localAudioStream}
-            localMode={mediaMode}
-            micEnabled={micEnabled}
-            peers={peers}
-            ownMicGain={ownMicGain}
-            onOwnMicGainChange={onOwnMicGainChange}
-            micVolumes={micVolumes}
-            onMicVolumeChange={onMicVolumeChange}
-            screenVolumes={screenVolumes}
-            onScreenVolumeChange={onScreenVolumeChange}
-          />
+          <>
+            <VoiceStage
+              currentMember={currentMember}
+              localVideoStream={localVideoStream}
+              localAudioStream={localAudioStream}
+              localMode={mediaMode}
+              micEnabled={micEnabled}
+              peers={peers}
+              ownMicGain={ownMicGain}
+              onOwnMicGainChange={onOwnMicGainChange}
+              micVolumes={micVolumes}
+              onMicVolumeChange={onMicVolumeChange}
+              screenVolumes={screenVolumes}
+              onScreenVolumeChange={onScreenVolumeChange}
+            />
+            <VoiceCallBar
+              micEnabled={micEnabled}
+              deafened={deafened}
+              mediaMode={mediaMode}
+              onToggleMic={onToggleMic}
+              onToggleDeafen={onToggleDeafen}
+              onToggleCamera={onToggleCamera}
+              onStartScreenShare={onStartScreenShare}
+              onStopScreenShare={onStopScreenShare}
+              onLeave={onLeave}
+            />
+          </>
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-3">
             <p className="text-sm text-vc-text-muted">Você está vendo {channel.name}, mas não está conectado.</p>

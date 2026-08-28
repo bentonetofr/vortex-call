@@ -112,6 +112,13 @@ export function AppShell({ member, onUpdateMember, onSignOut }: AppShellProps) {
             localAudioStream={voiceCall.localAudioStream}
             mediaMode={voiceCall.mediaMode}
             micEnabled={voiceCall.micEnabled}
+            deafened={voiceCall.deafened}
+            onToggleMic={voiceCall.toggleMic}
+            onToggleDeafen={voiceCall.toggleDeafen}
+            onToggleCamera={voiceCall.toggleCamera}
+            onStartScreenShare={voiceCall.startScreenShare}
+            onStopScreenShare={voiceCall.stopScreenShare}
+            onLeave={voiceCall.leave}
             peers={voiceCall.peers}
             onOpenDrawer={() => setMobileDrawerOpen(true)}
             onOpenMembers={() => setMobileMembersOpen(true)}
