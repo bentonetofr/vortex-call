@@ -9,9 +9,35 @@ export interface Channel {
 export interface Member {
   id: string;
   name: string;
+  fullName: string;
+  nickname: string | null;
   color: string;
+  avatarUrl: string | null;
   online: boolean;
   voiceChannelId: string | null;
+  onboarded: boolean;
+}
+
+export interface MemberRow {
+  id: string;
+  name: string;
+  nickname: string | null;
+  color: string;
+  avatar_url: string | null;
+  onboarded: boolean;
+}
+
+export function memberFromRow(row: MemberRow): Omit<Member, "online" | "voiceChannelId"> {
+  const nickname = row.nickname?.trim() || null;
+  return {
+    id: row.id,
+    name: nickname ?? row.name,
+    fullName: row.name,
+    nickname,
+    color: row.color,
+    avatarUrl: row.avatar_url,
+    onboarded: row.onboarded,
+  };
 }
 
 export interface Message {

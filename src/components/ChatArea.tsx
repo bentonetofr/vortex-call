@@ -69,7 +69,7 @@ export function ChatArea({
           if (!author) return null;
           return (
             <div key={message.id} className="flex gap-2.5">
-              <Avatar name={author.name} color={author.color} size={32} />
+              <Avatar name={author.name} color={author.color} avatarUrl={author.avatarUrl} size={32} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-1.5 text-sm">
                   <span className="truncate font-medium text-vc-accent">{author.name}</span>

@@ -30,6 +30,7 @@ export function VoiceStage({
       <ParticipantTile
         name={`${currentMember.name} (você)`}
         color={currentMember.color}
+        avatarUrl={currentMember.avatarUrl}
         videoStream={localVideoStream}
         audioStream={localAudioStream}
         micEnabled={micEnabled}
@@ -41,6 +42,7 @@ export function VoiceStage({
           key={peerId}
           name={peer.name}
           color={peer.color}
+          avatarUrl={peer.avatarUrl}
           videoStream={peer.videoStream}
           audioStream={peer.audioStream}
           micEnabled={peer.micEnabled}

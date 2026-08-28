@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getSupabase } from "./supabase";
-import type { Member } from "./types";
+import { memberFromRow, type Member } from "./types";
 
 type Status = "loading" | "signed-out" | "no-member" | "member";
 export type AuthResult = { ok: true; message?: string } | { ok: false; message: string };
@@ -18,14 +18,14 @@ export function useSession() {
     async function loadMember(userId: string) {
       const { data: row } = await supabase
         .from("members")
-        .select("id, name, color")
+        .select("id, name, nickname, color, avatar_url, onboarded")
         .eq("id", userId)
         .maybeSingle();
 
       if (cancelled) return;
 
       if (row) {
-        setMember({ ...row, online: true, voiceChannelId: null });
+        setMember({ ...memberFromRow(row), online: true, voiceChannelId: null });
         setStatus("member");
       } else {
         setMember(null);
@@ -87,5 +87,17 @@ export function useSession() {
     await getSupabase().auth.signOut();
   }
 
-  return { status, member, signInWithGoogle, signInWithPassword, signUpWithPassword, signOut };
+  function updateMemberLocal(patch: Partial<Member>) {
+    setMember((prev) => (prev ? { ...prev, ...patch } : prev));
+  }
+
+  return {
+    status,
+    member,
+    signInWithGoogle,
+    signInWithPassword,
+    signUpWithPassword,
+    signOut,
+    updateMemberLocal,
+  };
 }

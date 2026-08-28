@@ -10,8 +10,15 @@ import { useSession } from "@/lib/useSession";
 export const dynamic = "force-dynamic";
 
 export default function Home() {
-  const { status, member, signInWithGoogle, signInWithPassword, signUpWithPassword, signOut } =
-    useSession();
+  const {
+    status,
+    member,
+    signInWithGoogle,
+    signInWithPassword,
+    signUpWithPassword,
+    signOut,
+    updateMemberLocal,
+  } = useSession();
 
   if (status === "loading") {
     return <div className="h-screen bg-vc-app" />;
@@ -27,5 +34,5 @@ export default function Home() {
     return <AccountErrorScreen onSignOut={signOut} />;
   }
 
-  return <AppShell member={member!} />;
+  return <AppShell member={member!} onUpdateMember={updateMemberLocal} onSignOut={signOut} />;
 }

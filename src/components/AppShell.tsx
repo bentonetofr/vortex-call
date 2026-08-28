@@ -10,17 +10,21 @@ import { ChannelSidebar } from "./ChannelSidebar";
 import { ChatArea } from "./ChatArea";
 import { MemberList } from "./MemberList";
 import { PeerAudioPlayer } from "./PeerAudioPlayer";
+import { ProfileSettingsModal } from "./ProfileSettingsModal";
 import { VoiceRoomView } from "./VoiceRoomView";
 
 interface AppShellProps {
   member: Member;
+  onUpdateMember: (patch: Partial<Member>) => void;
+  onSignOut: () => void;
 }
 
-export function AppShell({ member }: AppShellProps) {
+export function AppShell({ member, onUpdateMember, onSignOut }: AppShellProps) {
   const [activeChannelId, setActiveChannelId] = useState("geral");
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [mobileMembersOpen, setMobileMembersOpen] = useState(false);
   const [screenVolumes, setScreenVolumes] = useState<Record<string, number>>({});
+  const [showSettings, setShowSettings] = useState(!member.onboarded);
   const channels = useChannels();
   const members = useMembers(member);
   const messages = useMessages(activeChannelId, member.id);
@@ -75,6 +79,7 @@ export function AppShell({ member }: AppShellProps) {
         voiceError={voiceCall.error}
         mobileOpen={mobileDrawerOpen}
         onCloseMobile={() => setMobileDrawerOpen(false)}
+        onOpenSettings={() => setShowSettings(true)}
       />
       {activeChannel &&
         (activeChannel.type === "voice" ? (
@@ -107,6 +112,16 @@ export function AppShell({ member }: AppShellProps) {
           />
         ))}
       <MemberList members={members} mobileOpen={mobileMembersOpen} onCloseMobile={() => setMobileMembersOpen(false)} />
+
+      {showSettings && (
+        <ProfileSettingsModal
+          member={member}
+          firstTime={!member.onboarded}
+          onClose={() => setShowSettings(false)}
+          onSaved={onUpdateMember}
+          onSignOut={onSignOut}
+        />
+      )}
     </div>
   );
 }

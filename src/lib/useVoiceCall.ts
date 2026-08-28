@@ -11,7 +11,7 @@ import {
   playPeerLeaveSound,
   playUnmuteSound,
 } from "./sounds";
-import { getIceServers } from "./webrtc";
+import { fetchIceServers } from "./webrtc";
 import type { Member } from "./types";
 
 export type MediaMode = "none" | "camera" | "screen";
@@ -24,6 +24,7 @@ export interface PeerCallState {
   micEnabled: boolean;
   name: string;
   color: string;
+  avatarUrl: string | null;
 }
 
 export interface ScreenShareOptions {
@@ -37,6 +38,7 @@ interface PresencePayload {
   userId: string;
   name: string;
   color: string;
+  avatarUrl: string | null;
   micEnabled: boolean;
   mediaMode: MediaMode;
 }
@@ -49,7 +51,7 @@ interface SignalMessage {
   candidate?: RTCIceCandidateInit;
 }
 
-const emptyPeer = (name: string, color: string): PeerCallState => ({
+const emptyPeer = (name: string, color: string, avatarUrl: string | null): PeerCallState => ({
   audioStream: null,
   videoStream: null,
   screenAudioStream: null,
@@ -57,6 +59,7 @@ const emptyPeer = (name: string, color: string): PeerCallState => ({
   micEnabled: true,
   name,
   color,
+  avatarUrl,
 });
 
 // WebRTC's default bandwidth estimation can silently cap a screen-share
@@ -97,6 +100,10 @@ export function useVoiceCall(member: Member) {
   const screenAudioSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
   const screenAudioTrackRef = useRef<MediaStreamTrack | null>(null);
   const screenShareOptionsRef = useRef<ScreenShareOptions | null>(null);
+  const iceServersRef = useRef<RTCIceServer[]>([
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun.cloudflare.com:3478" },
+  ]);
 
   const send = useCallback(
     (message: Omit<SignalMessage, "from">) => {
@@ -126,11 +133,11 @@ export function useVoiceCall(member: Member) {
   }, []);
 
   const ensureConnection = useCallback(
-    (peerId: string, meta: { name: string; color: string }) => {
+    (peerId: string, meta: { name: string; color: string; avatarUrl: string | null }) => {
       let pc = connectionsRef.current.get(peerId);
       if (pc) return pc;
 
-      pc = new RTCPeerConnection({ iceServers: getIceServers() });
+      pc = new RTCPeerConnection({ iceServers: iceServersRef.current });
       connectionsRef.current.set(peerId, pc);
       politeRef.current.set(peerId, member.id < peerId);
       makingOfferRef.current.set(peerId, false);
@@ -168,7 +175,7 @@ export function useVoiceCall(member: Member) {
 
       pc.ontrack = (event) => {
         setPeers((prev) => {
-          const existing = prev[peerId] ?? emptyPeer(meta.name, meta.color);
+          const existing = prev[peerId] ?? emptyPeer(meta.name, meta.color, meta.avatarUrl);
           if (event.track.kind === "audio") {
             // The mic track is always added first (at connection creation), so
             // the first audio track to arrive is the mic; any later one is
@@ -188,7 +195,10 @@ export function useVoiceCall(member: Member) {
         }
       };
 
-      setPeers((prev) => ({ ...prev, [peerId]: prev[peerId] ?? emptyPeer(meta.name, meta.color) }));
+      setPeers((prev) => ({
+        ...prev,
+        [peerId]: prev[peerId] ?? emptyPeer(meta.name, meta.color, meta.avatarUrl),
+      }));
 
       return pc;
     },
@@ -199,7 +209,7 @@ export function useVoiceCall(member: Member) {
     async (from: string, message: SignalMessage) => {
       // A signal can arrive before this peer's presence sync has run (race),
       // so create the connection on demand — presence will fill in name/color shortly.
-      const pc = ensureConnection(from, { name: "...", color: "#888888" });
+      const pc = ensureConnection(from, { name: "...", color: "#888888", avatarUrl: null });
       const polite = politeRef.current.get(from) ?? false;
 
       if (message.type === "offer" || message.type === "answer") {
@@ -270,6 +280,8 @@ export function useVoiceCall(member: Member) {
       setLocalAudioStream(micStream);
       setActiveChannelId(channelId);
 
+      iceServersRef.current = await fetchIceServers();
+
       const channel = getSupabase().channel(`voice:${channelId}`, {
         config: { presence: { key: member.id }, broadcast: { self: false } },
       });
@@ -291,11 +303,12 @@ export function useVoiceCall(member: Member) {
             setPeers((prev) => ({
               ...prev,
               [peerId]: {
-                ...(prev[peerId] ?? emptyPeer(meta.name, meta.color)),
+                ...(prev[peerId] ?? emptyPeer(meta.name, meta.color, meta.avatarUrl)),
                 mediaMode: meta.mediaMode,
                 micEnabled: meta.micEnabled,
                 name: meta.name,
                 color: meta.color,
+                avatarUrl: meta.avatarUrl,
                 videoStream: meta.mediaMode === "none" ? null : (prev[peerId]?.videoStream ?? null),
                 screenAudioStream:
                   meta.mediaMode === "screen" ? (prev[peerId]?.screenAudioStream ?? null) : null,
@@ -320,6 +333,7 @@ export function useVoiceCall(member: Member) {
               userId: member.id,
               name: member.name,
               color: member.color,
+      avatarUrl: member.avatarUrl,
               micEnabled: true,
               mediaMode: "none",
             } satisfies PresencePayload);
@@ -340,6 +354,7 @@ export function useVoiceCall(member: Member) {
       userId: member.id,
       name: member.name,
       color: member.color,
+      avatarUrl: member.avatarUrl,
       micEnabled: next,
       mediaMode,
     } satisfies PresencePayload);
@@ -370,6 +385,7 @@ export function useVoiceCall(member: Member) {
         userId: member.id,
         name: member.name,
         color: member.color,
+      avatarUrl: member.avatarUrl,
         micEnabled,
         mediaMode: mode,
       } satisfies PresencePayload);

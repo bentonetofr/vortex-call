@@ -1,28 +1,19 @@
-export function getIceServers(): RTCIceServer[] {
-  const servers: RTCIceServer[] = [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun.relay.metered.ca:80" },
-  ];
+const FALLBACK_ICE_SERVERS: RTCIceServer[] = [
+  { urls: "stun:stun.l.google.com:19302" },
+  { urls: "stun:stun.cloudflare.com:3478" },
+];
 
-  const turnUsername = process.env.NEXT_PUBLIC_TURN_USERNAME;
-  const turnCredential = process.env.NEXT_PUBLIC_TURN_CREDENTIAL;
+export async function fetchIceServers(): Promise<RTCIceServer[]> {
+  try {
+    const res = await fetch("/api/turn-credentials");
+    if (!res.ok) return FALLBACK_ICE_SERVERS;
 
-  if (turnUsername && turnCredential) {
-    servers.push(
-      { urls: "turn:global.relay.metered.ca:80", username: turnUsername, credential: turnCredential },
-      {
-        urls: "turn:global.relay.metered.ca:80?transport=tcp",
-        username: turnUsername,
-        credential: turnCredential,
-      },
-      { urls: "turn:global.relay.metered.ca:443", username: turnUsername, credential: turnCredential },
-      {
-        urls: "turns:global.relay.metered.ca:443?transport=tcp",
-        username: turnUsername,
-        credential: turnCredential,
-      },
-    );
+    const data = await res.json();
+    if (Array.isArray(data.iceServers) && data.iceServers.length > 0) {
+      return [...FALLBACK_ICE_SERVERS, ...data.iceServers];
+    }
+    return FALLBACK_ICE_SERVERS;
+  } catch {
+    return FALLBACK_ICE_SERVERS;
   }
-
-  return servers;
 }

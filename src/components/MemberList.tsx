@@ -25,7 +25,13 @@ export function MemberList({ members, mobileOpen, onCloseMobile }: MemberListPro
       </div>
       {online.map((member) => (
         <div key={member.id} className="flex items-center gap-2 rounded-md px-1.5 py-1">
-          <Avatar name={member.name} color={member.color} size={24} online={member.online} />
+          <Avatar
+            name={member.name}
+            color={member.color}
+            avatarUrl={member.avatarUrl}
+            size={24}
+            online={member.online}
+          />
           <span className="min-w-0 flex-1 truncate text-[12.5px] text-vc-text-secondary">{member.name}</span>
         </div>
       ))}

@@ -24,6 +24,7 @@ interface ChannelSidebarProps {
   voiceError: string | null;
   mobileOpen: boolean;
   onCloseMobile: () => void;
+  onOpenSettings: () => void;
 }
 
 export function ChannelSidebar({
@@ -45,6 +46,7 @@ export function ChannelSidebar({
   voiceError,
   mobileOpen,
   onCloseMobile,
+  onOpenSettings,
 }: ChannelSidebarProps) {
   const textChannels = channels.filter((c) => c.type === "text");
   const voiceChannels = channels.filter((c) => c.type === "voice");
@@ -109,6 +111,7 @@ export function ChannelSidebar({
                   <VoiceOccupantRow
                     name={currentMember.name}
                     color={currentMember.color}
+                    avatarUrl={currentMember.avatarUrl}
                     audioStream={localAudioStream}
                     micEnabled={micEnabled}
                     label="Você"
@@ -118,6 +121,7 @@ export function ChannelSidebar({
                       key={peerId}
                       name={peer.name}
                       color={peer.color}
+                      avatarUrl={peer.avatarUrl}
                       audioStream={peer.audioStream}
                       micEnabled={peer.micEnabled}
                     />
@@ -142,11 +146,14 @@ export function ChannelSidebar({
         />
       )}
 
-      <div className="flex items-center gap-2 border-t border-vc-border bg-vc-sidebar-footer px-2.5 py-2">
-        <Avatar name={currentMember.name} color={currentMember.color} size={26} />
+      <button
+        onClick={onOpenSettings}
+        className="flex items-center gap-2 border-t border-vc-border bg-vc-sidebar-footer px-2.5 py-2 text-left hover:bg-vc-hover"
+      >
+        <Avatar name={currentMember.name} color={currentMember.color} avatarUrl={currentMember.avatarUrl} size={26} />
         <span className="min-w-0 flex-1 truncate text-[12.5px] text-vc-text">{currentMember.name}</span>
         <IconSettings size={16} className="shrink-0 text-vc-text-muted" />
-      </div>
+      </button>
     </div>
   );
 }

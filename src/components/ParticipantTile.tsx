@@ -8,6 +8,7 @@ import { Avatar } from "./Avatar";
 interface ParticipantTileProps {
   name: string;
   color: string;
+  avatarUrl: string | null;
   videoStream: MediaStream | null;
   audioStream: MediaStream | null;
   micEnabled: boolean;
@@ -20,6 +21,7 @@ interface ParticipantTileProps {
 export function ParticipantTile({
   name,
   color,
+  avatarUrl,
   videoStream,
   audioStream,
   micEnabled,
@@ -64,7 +66,7 @@ export function ParticipantTile({
       {videoStream ? (
         <video ref={videoRef} autoPlay playsInline muted={muted} className="h-full w-full object-cover" />
       ) : (
-        <Avatar name={name} color={color} size={72} />
+        <Avatar name={name} color={color} avatarUrl={avatarUrl} size={72} />
       )}
       <div className="absolute bottom-2 left-2 flex max-w-[calc(100%-1rem)] items-center gap-1 rounded bg-black/50 px-1.5 py-0.5 text-[11px] text-white">
         {isScreen && <IconScreenShare size={12} className="shrink-0" />}

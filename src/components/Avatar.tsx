@@ -1,25 +1,31 @@
 interface AvatarProps {
   name: string;
   color: string;
+  avatarUrl?: string | null;
   size?: number;
   online?: boolean;
   speaking?: boolean;
 }
 
-export function Avatar({ name, color, size = 32, online, speaking }: AvatarProps) {
+export function Avatar({ name, color, avatarUrl, size = 32, online, speaking }: AvatarProps) {
   const initial = name.charAt(0).toUpperCase();
 
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <div
-        className="flex h-full w-full items-center justify-center rounded-full text-white transition-shadow"
+        className="flex h-full w-full items-center justify-center overflow-hidden rounded-full text-white transition-shadow"
         style={{
           backgroundColor: color,
           fontSize: Math.max(11, size * 0.35),
           boxShadow: speaking ? "0 0 0 3px #ec4899" : "0 0 0 0 transparent",
         }}
       >
-        {initial}
+        {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+        ) : (
+          initial
+        )}
       </div>
       {online !== undefined && (
         <span
