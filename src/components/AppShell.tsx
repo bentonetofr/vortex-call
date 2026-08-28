@@ -115,6 +115,8 @@ export function AppShell({ member, onUpdateMember, onSignOut }: AppShellProps) {
             peers={voiceCall.peers}
             onOpenDrawer={() => setMobileDrawerOpen(true)}
             onOpenMembers={() => setMobileMembersOpen(true)}
+            ownMicGain={voiceCall.micVolume}
+            onOwnMicGainChange={voiceCall.setMicVolume}
             micVolumes={micVolumes}
             onMicVolumeChange={handleMicVolumeChange}
             screenVolumes={screenVolumes}

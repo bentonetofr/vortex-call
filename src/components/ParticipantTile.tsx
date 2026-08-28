@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { IconMaximize, IconMicrophoneOff, IconScreenShare } from "@tabler/icons-react";
+import { IconDotsVertical, IconMaximize, IconMicrophoneOff, IconScreenShare } from "@tabler/icons-react";
 import { useSpeaking } from "@/lib/useSpeaking";
 import { Avatar } from "./Avatar";
 
@@ -14,8 +14,14 @@ interface ParticipantTileProps {
   micEnabled: boolean;
   isScreen?: boolean;
   muted?: boolean;
+  // Your own outgoing mic volume — how loud you sound to everyone else.
+  // Only relevant on your own tile.
+  ownMicGain?: number;
+  onOwnMicGainChange?: (volume: number) => void;
+  // How loud this peer's voice sounds to you, locally.
   micVolume?: number;
   onMicVolumeChange?: (volume: number) => void;
+  // How loud this peer's screen-share audio sounds to you, locally.
   volume?: number;
   onVolumeChange?: (volume: number) => void;
 }
@@ -29,6 +35,8 @@ export function ParticipantTile({
   micEnabled,
   isScreen,
   muted,
+  ownMicGain,
+  onOwnMicGainChange,
   micVolume,
   onMicVolumeChange,
   volume,
@@ -36,8 +44,10 @@ export function ParticipantTile({
 }: ParticipantTileProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const volumePanelRef = useRef<HTMLDivElement>(null);
+  const volumeButtonRef = useRef<HTMLButtonElement>(null);
   const [showVolumePanel, setShowVolumePanel] = useState(false);
   const speaking = useSpeaking(micEnabled ? audioStream : null);
+  const hasVolumeControls = Boolean(onOwnMicGainChange || onMicVolumeChange || onVolumeChange);
 
   useEffect(() => {
     if (videoRef.current) videoRef.current.srcObject = videoStream;
@@ -46,9 +56,10 @@ export function ParticipantTile({
   useEffect(() => {
     if (!showVolumePanel) return;
     function handlePointerDown(e: PointerEvent) {
-      if (volumePanelRef.current && !volumePanelRef.current.contains(e.target as Node)) {
-        setShowVolumePanel(false);
-      }
+      const target = e.target as Node;
+      if (volumePanelRef.current?.contains(target)) return;
+      if (volumeButtonRef.current?.contains(target)) return;
+      setShowVolumePanel(false);
     }
     document.addEventListener("pointerdown", handlePointerDown);
     return () => document.removeEventListener("pointerdown", handlePointerDown);
@@ -59,7 +70,7 @@ export function ParticipantTile({
       className="relative flex aspect-video items-center justify-center overflow-hidden rounded-lg bg-vc-sidebar transition-shadow"
       style={{ boxShadow: speaking ? "0 0 0 3px #ec4899" : "0 0 0 0 transparent" }}
       onContextMenu={
-        onVolumeChange || onMicVolumeChange
+        hasVolumeControls
           ? (e) => {
               e.preventDefault();
               setShowVolumePanel(true);
@@ -90,12 +101,42 @@ export function ParticipantTile({
           <IconMaximize size={13} />
         </button>
       )}
-      {showVolumePanel && (onVolumeChange || onMicVolumeChange) && (
+      {hasVolumeControls && (
+        <button
+          ref={volumeButtonRef}
+          onClick={() => setShowVolumePanel((v) => !v)}
+          aria-label="Opções de volume"
+          className={`absolute bottom-2 flex h-6 w-6 items-center justify-center rounded bg-black/50 text-white hover:bg-black/70 ${
+            videoStream ? "right-9" : "right-2"
+          }`}
+        >
+          <IconDotsVertical size={14} />
+        </button>
+      )}
+      {showVolumePanel && hasVolumeControls && (
         <div
           ref={volumePanelRef}
           className="absolute top-2 left-2 z-10 w-44 rounded-lg bg-vc-sidebar/95 p-3 shadow-lg"
           onContextMenu={(e) => e.preventDefault()}
         >
+          {onOwnMicGainChange && (
+            <div>
+              <div className="mb-1.5 flex items-center justify-between text-[11px] text-vc-text-muted">
+                <span>Seu volume pros outros</span>
+                <span>{Math.round((ownMicGain ?? 1) * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={2}
+                step={0.05}
+                value={ownMicGain ?? 1}
+                onChange={(e) => onOwnMicGainChange(Number(e.target.value))}
+                className="w-full accent-vc-accent"
+                aria-label="Seu volume pros outros"
+              />
+            </div>
+          )}
           {onMicVolumeChange && (
             <div className={onVolumeChange ? "mb-2.5" : ""}>
               <div className="mb-1.5 flex items-center justify-between text-[11px] text-vc-text-muted">

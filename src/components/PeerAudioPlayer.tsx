@@ -1,26 +1,6 @@
 "use client";
 
 import { Fragment, useEffect, useRef } from "react";
-import type { MediaMode } from "@/lib/useVoiceCall";
-
-interface PeerAudioProps {
-  stream: MediaStream;
-  deafened: boolean;
-}
-
-function PeerAudio({ stream, deafened }: PeerAudioProps) {
-  const audioRef = useRef<HTMLAudioElement>(null);
-
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.srcObject = stream;
-  }, [stream]);
-
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.muted = deafened;
-  }, [deafened]);
-
-  return <audio ref={audioRef} autoPlay />;
-}
 
 interface GainAudioProps {
   stream: MediaStream;
@@ -28,10 +8,8 @@ interface GainAudioProps {
   deafened: boolean;
 }
 
-// Same as PeerAudio but routed through a GainNode so the volume can go
-// past 100% — used wherever a per-peer slider (screen-share tile) is
-// available, i.e. screen audio always, and mic audio only for someone who
-// is currently screen-sharing (see PeerAudioPlayer below).
+// Plays a stream through a GainNode instead of relying on <audio>'s own
+// volume (which caps at 100%) so per-peer sliders can go past that.
 function GainAudio({ stream, volume, deafened }: GainAudioProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const gainRef = useRef<GainNode | null>(null);
@@ -68,10 +46,7 @@ function GainAudio({ stream, volume, deafened }: GainAudioProps) {
 }
 
 interface PeerAudioPlayerProps {
-  peers: Record<
-    string,
-    { audioStream: MediaStream | null; screenAudioStream: MediaStream | null; mediaMode: MediaMode }
-  >;
+  peers: Record<string, { audioStream: MediaStream | null; screenAudioStream: MediaStream | null }>;
   micVolumes: Record<string, number>;
   screenVolumes: Record<string, number>;
   deafened: boolean;
@@ -82,17 +57,14 @@ export function PeerAudioPlayer({ peers, micVolumes, screenVolumes, deafened }: 
     <>
       {Object.entries(peers).map(([peerId, peer]) => (
         <Fragment key={peerId}>
-          {peer.audioStream &&
-            (peer.mediaMode === "screen" ? (
-              <GainAudio
-                key={`${peerId}-mic`}
-                stream={peer.audioStream}
-                volume={micVolumes[peerId] ?? 1}
-                deafened={deafened}
-              />
-            ) : (
-              <PeerAudio key={`${peerId}-mic`} stream={peer.audioStream} deafened={deafened} />
-            ))}
+          {peer.audioStream && (
+            <GainAudio
+              key={`${peerId}-mic`}
+              stream={peer.audioStream}
+              volume={micVolumes[peerId] ?? 1}
+              deafened={deafened}
+            />
+          )}
           {peer.screenAudioStream && (
             <GainAudio
               key={`${peerId}-screen`}

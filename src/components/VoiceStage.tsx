@@ -9,6 +9,8 @@ interface VoiceStageProps {
   localMode: MediaMode;
   micEnabled: boolean;
   peers: Record<string, PeerCallState>;
+  ownMicGain: number;
+  onOwnMicGainChange: (volume: number) => void;
   micVolumes: Record<string, number>;
   onMicVolumeChange: (peerId: string, volume: number) => void;
   screenVolumes: Record<string, number>;
@@ -22,6 +24,8 @@ export function VoiceStage({
   localMode,
   micEnabled,
   peers,
+  ownMicGain,
+  onOwnMicGainChange,
   micVolumes,
   onMicVolumeChange,
   screenVolumes,
@@ -40,6 +44,8 @@ export function VoiceStage({
         micEnabled={micEnabled}
         isScreen={localMode === "screen"}
         muted
+        ownMicGain={ownMicGain}
+        onOwnMicGainChange={onOwnMicGainChange}
       />
       {peerList.map(([peerId, peer]) => (
         <ParticipantTile
@@ -51,10 +57,8 @@ export function VoiceStage({
           audioStream={peer.audioStream}
           micEnabled={peer.micEnabled}
           isScreen={peer.mediaMode === "screen"}
-          micVolume={peer.mediaMode === "screen" ? (micVolumes[peerId] ?? 1) : undefined}
-          onMicVolumeChange={
-            peer.mediaMode === "screen" ? (volume) => onMicVolumeChange(peerId, volume) : undefined
-          }
+          micVolume={peer.audioStream ? (micVolumes[peerId] ?? 1) : undefined}
+          onMicVolumeChange={peer.audioStream ? (volume) => onMicVolumeChange(peerId, volume) : undefined}
           volume={peer.screenAudioStream ? (screenVolumes[peerId] ?? 1) : undefined}
           onVolumeChange={
             peer.screenAudioStream ? (volume) => onScreenVolumeChange(peerId, volume) : undefined

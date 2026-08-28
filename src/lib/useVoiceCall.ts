@@ -95,6 +95,7 @@ const GATE_FLOOR = 0.12; // attenuates rather than hard-mutes between words, so 
 
 interface MicAcquisition {
   stream: MediaStream;
+  setVolume: (value: number) => void;
   cleanup: () => void;
 }
 
@@ -104,7 +105,12 @@ interface MicAcquisition {
 // verifiable noise gate on top: while gated, the mic is silenced down to
 // GATE_FLOOR whenever the same speaking-detection logic used elsewhere in
 // this app says nobody's talking, and opens back up the instant they do.
-async function acquireMicStream(gated: boolean): Promise<MicAcquisition> {
+//
+// The mic always runs through a GainNode too (separate from the gate),
+// driving the "your own volume" slider — live-adjustable via setVolume,
+// no re-acquisition needed since it's our own graph, not a browser
+// constraint.
+async function acquireMicStream(gated: boolean, initialVolume: number): Promise<MicAcquisition> {
   const rawStream = await navigator.mediaDevices.getUserMedia({
     audio: {
       noiseSuppression: { ideal: gated },
@@ -113,45 +119,60 @@ async function acquireMicStream(gated: boolean): Promise<MicAcquisition> {
     },
   });
 
-  if (!gated) {
-    return { stream: rawStream, cleanup: () => rawStream.getTracks().forEach((t) => t.stop()) };
-  }
-
   const ctx = new AudioContext();
   const source = ctx.createMediaStreamSource(rawStream);
-  const analyser = ctx.createAnalyser();
-  analyser.fftSize = 512;
-  analyser.smoothingTimeConstant = 0.6;
-  const gain = ctx.createGain();
-  gain.gain.value = GATE_FLOOR;
+  const volumeGain = ctx.createGain();
+  volumeGain.gain.value = initialVolume;
   const destination = ctx.createMediaStreamDestination();
-  source.connect(analyser);
-  source.connect(gain);
-  gain.connect(destination);
 
-  const data = new Uint8Array(analyser.frequencyBinCount);
-  // setInterval, not requestAnimationFrame: rAF pauses entirely on a
-  // backgrounded/minimized tab, which would freeze the gate — silently
-  // stuck shut if you were quiet the moment you tabbed away, muting you
-  // until you tab back. A timer keeps running (just throttled) in the
-  // background, so the gate stays responsive while alt-tabbed into a game.
-  function tick() {
-    analyser.getByteFrequencyData(data);
-    let sum = 0;
-    for (let i = 0; i < data.length; i++) sum += data[i];
-    const speaking = sum / data.length > GATE_THRESHOLD;
-    const now = ctx.currentTime;
-    gain.gain.setTargetAtTime(speaking ? 1 : GATE_FLOOR, now, speaking ? GATE_ATTACK : GATE_RELEASE);
+  let analyser: AnalyserNode | null = null;
+  let gateGain: GainNode | null = null;
+  let intervalId: number | null = null;
+
+  if (gated) {
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.6;
+    gateGain = ctx.createGain();
+    gateGain.gain.value = GATE_FLOOR;
+    source.connect(analyser);
+    source.connect(gateGain);
+    gateGain.connect(volumeGain);
+
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    const localAnalyser = analyser;
+    const localGateGain = gateGain;
+    // setInterval, not requestAnimationFrame: rAF pauses entirely on a
+    // backgrounded/minimized tab, which would freeze the gate — silently
+    // stuck shut if you were quiet the moment you tabbed away, muting you
+    // until you tab back. A timer keeps running (just throttled) in the
+    // background, so the gate stays responsive while alt-tabbed into a game.
+    function tick() {
+      localAnalyser.getByteFrequencyData(data);
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) sum += data[i];
+      const speaking = sum / data.length > GATE_THRESHOLD;
+      const now = ctx.currentTime;
+      localGateGain.gain.setTargetAtTime(speaking ? 1 : GATE_FLOOR, now, speaking ? GATE_ATTACK : GATE_RELEASE);
+    }
+    intervalId = window.setInterval(tick, 50);
+  } else {
+    source.connect(volumeGain);
   }
-  const intervalId = window.setInterval(tick, 50);
+
+  volumeGain.connect(destination);
 
   return {
     stream: destination.stream,
+    setVolume: (value: number) => {
+      volumeGain.gain.value = value;
+    },
     cleanup: () => {
-      window.clearInterval(intervalId);
+      if (intervalId !== null) window.clearInterval(intervalId);
       source.disconnect();
-      analyser.disconnect();
-      gain.disconnect();
+      analyser?.disconnect();
+      gateGain?.disconnect();
+      volumeGain.disconnect();
       ctx.close();
       rawStream.getTracks().forEach((t) => t.stop());
     },
@@ -165,6 +186,9 @@ export function useVoiceCall(member: Member) {
   // A preference, not call state — unlike mic/deafen it's intentionally not
   // reset in leave(), so it carries over from one call to the next.
   const [noiseSuppression, setNoiseSuppression] = useState(true);
+  // Also a preference, not call state — how loud YOUR mic sounds to
+  // everyone else. Persists across calls like noiseSuppression does.
+  const [micVolume, setMicVolumeState] = useState(1);
   const [mediaMode, setMediaMode] = useState<MediaMode>("none");
   const [localVideoStream, setLocalVideoStream] = useState<MediaStream | null>(null);
   const [localAudioStream, setLocalAudioStream] = useState<MediaStream | null>(null);
@@ -178,6 +202,7 @@ export function useVoiceCall(member: Member) {
   const ignoreOfferRef = useRef<Map<string, boolean>>(new Map());
   const micStreamRef = useRef<MediaStream | null>(null);
   const micCleanupRef = useRef<(() => void) | null>(null);
+  const micVolumeSetterRef = useRef<((value: number) => void) | null>(null);
   const micSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
   const videoSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
   const localVideoTrackRef = useRef<MediaStreamTrack | null>(null);
@@ -334,6 +359,7 @@ export function useVoiceCall(member: Member) {
     ignoreOfferRef.current.clear();
     micCleanupRef.current?.();
     micCleanupRef.current = null;
+    micVolumeSetterRef.current = null;
     micStreamRef.current = null;
     localVideoTrackRef.current?.stop();
     localVideoTrackRef.current = null;
@@ -361,12 +387,13 @@ export function useVoiceCall(member: Member) {
       setError(null);
       let acquisition: MicAcquisition;
       try {
-        acquisition = await acquireMicStream(noiseSuppression);
+        acquisition = await acquireMicStream(noiseSuppression, micVolume);
       } catch {
         setError("Não deu pra acessar o microfone. Verifique a permissão do navegador.");
         return;
       }
       micCleanupRef.current = acquisition.cleanup;
+      micVolumeSetterRef.current = acquisition.setVolume;
       micStreamRef.current = acquisition.stream;
       setLocalAudioStream(acquisition.stream);
       setActiveChannelId(channelId);
@@ -434,7 +461,7 @@ export function useVoiceCall(member: Member) {
           }
         });
     },
-    [activeChannelId, leave, member, ensureConnection, closePeer, handleSignal, noiseSuppression],
+    [activeChannelId, leave, member, ensureConnection, closePeer, handleSignal, noiseSuppression, micVolume],
   );
 
   const toggleMic = useCallback(() => {
@@ -489,7 +516,7 @@ export function useVoiceCall(member: Member) {
     if (!micStreamRef.current) return;
 
     try {
-      const acquisition = await acquireMicStream(next);
+      const acquisition = await acquireMicStream(next, micVolume);
       const newTrack = acquisition.stream.getAudioTracks()[0];
       newTrack.enabled = micEnabled;
 
@@ -497,12 +524,18 @@ export function useVoiceCall(member: Member) {
 
       micCleanupRef.current?.();
       micCleanupRef.current = acquisition.cleanup;
+      micVolumeSetterRef.current = acquisition.setVolume;
       micStreamRef.current = acquisition.stream;
       setLocalAudioStream(acquisition.stream);
     } catch {
       setNoiseSuppression(!next);
     }
-  }, [noiseSuppression, micEnabled]);
+  }, [noiseSuppression, micEnabled, micVolume]);
+
+  const setMicVolume = useCallback((value: number) => {
+    setMicVolumeState(value);
+    micVolumeSetterRef.current?.(value);
+  }, []);
 
   const setVideoTrack = useCallback(
     (track: MediaStreamTrack | null, mode: MediaMode) => {
@@ -621,6 +654,7 @@ export function useVoiceCall(member: Member) {
     micEnabled,
     deafened,
     noiseSuppression,
+    micVolume,
     mediaMode,
     peers,
     localVideoStream,
@@ -631,6 +665,7 @@ export function useVoiceCall(member: Member) {
     toggleMic,
     toggleDeafen,
     toggleNoiseSuppression,
+    setMicVolume,
     toggleCamera,
     startScreenShare,
     stopScreenShare,
