@@ -73,7 +73,9 @@ export class VoiceConnection {
       .on("broadcast", { event: "signal" }, ({ payload }) => {
         const message = payload as SignalMessage;
         if (message.to !== this.bot.id) return;
-        void this.handleSignal(message.from, message);
+        void this.handleSignal(message.from, message).catch((err) => {
+          console.error(`[voice] failed to handle ${message.type} from ${message.from}:`, err);
+        });
       })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
@@ -129,6 +131,7 @@ export class VoiceConnection {
 
     pc.onnegotiationneeded = async () => {
       try {
+        if (pc.signalingState !== "stable") return;
         this.makingOffer.set(peerId, true);
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
@@ -158,6 +161,18 @@ export class VoiceConnection {
     const polite = this.polite.get(from) ?? false;
 
     if (message.type === "offer" || message.type === "answer") {
+      // A polite peer implicitly rolls back its local offer when accepting a
+      // colliding remote offer. The answer to that abandoned offer can still
+      // arrive later; werift correctly rejects it unless we discard it here.
+      if (
+        message.type === "answer" &&
+        pc.signalingState !== "have-local-offer" &&
+        pc.signalingState !== "have-remote-pranswer"
+      ) {
+        console.warn(`[voice] ignoring stale answer from ${from} while ${pc.signalingState}`);
+        return;
+      }
+
       const collision =
         message.type === "offer" && (this.makingOffer.get(from) || pc.signalingState !== "stable");
       const ignore = !polite && collision;
