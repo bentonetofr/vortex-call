@@ -11,4 +11,6 @@ export const config = {
   botPassword: required("BOT_PASSWORD"),
   appUrl: (process.env.APP_URL ?? "https://vortex-call.vercel.app").replace(/\/$/, ""),
   ffmpegPath: process.env.FFMPEG_PATH ?? "ffmpeg",
+  ytDlpPath: process.env.YTDLP_PATH ?? "yt-dlp",
+  ytDlpCookiesPath: process.env.YTDLP_COOKIES_PATH || null,
 };

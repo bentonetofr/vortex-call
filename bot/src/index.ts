@@ -5,8 +5,10 @@ import { VoiceConnection } from "./voiceConnection.js";
 import { Player } from "./player.js";
 import { RosterWatcher } from "./roster.js";
 import { startCommandListener } from "./commands.js";
+import { verifyRuntimeDependencies } from "./runtimeDependencies.js";
 
 async function main() {
+  await verifyRuntimeDependencies();
   const bot = await signInBot();
   console.log(`DJ Vortex online as "${bot.name}" (${bot.id})`);
 
@@ -19,7 +21,7 @@ async function main() {
 
   startCommandListener(bot, player, roster);
 
-  console.log("Listening for !play / !skip / !stop / !fila in chat...");
+  console.log("Listening for m!play / m!skip / m!stop / m!fila in chat...");
 }
 
 main().catch((err) => {

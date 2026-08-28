@@ -1,9 +1,54 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { IconDotsVertical, IconMaximize, IconMicrophoneOff, IconScreenShare } from "@tabler/icons-react";
+import {
+  IconDotsVertical,
+  IconMaximize,
+  IconMicrophone,
+  IconMicrophoneOff,
+  IconScreenShare,
+} from "@tabler/icons-react";
 import { useSpeaking } from "@/lib/useSpeaking";
 import { Avatar } from "./Avatar";
+
+const VOLUME_MAX = 2;
+
+interface VolumeSliderProps {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}
+
+function VolumeSlider({ icon, label, value, onChange }: VolumeSliderProps) {
+  // Displayed percentage is relative to "normal" (value=1 -> 100%, up to
+  // 200%); the slider fill is relative to the 0..VOLUME_MAX track range —
+  // two different numbers that happen to coincide at value=2 only.
+  const displayPct = Math.round(value * 100);
+  const fillPct = (value / VOLUME_MAX) * 100;
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center gap-1.5 text-[11px] text-vc-text-muted">
+        {icon}
+        <span className="min-w-0 flex-1 truncate">{label}</span>
+        <span className="shrink-0 font-medium text-vc-text">{displayPct}%</span>
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={VOLUME_MAX}
+        step={0.05}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="vc-slider"
+        style={{
+          background: `linear-gradient(to right, var(--color-vc-accent) ${fillPct}%, var(--color-vc-input) ${fillPct}%)`,
+        }}
+        aria-label={label}
+      />
+    </div>
+  );
+}
 
 interface ParticipantTileProps {
   name: string;
@@ -116,62 +161,32 @@ export function ParticipantTile({
       {showVolumePanel && hasVolumeControls && (
         <div
           ref={volumePanelRef}
-          className="absolute top-2 left-2 z-10 w-44 rounded-lg bg-vc-sidebar/95 p-3 shadow-lg"
+          className="absolute top-2 left-2 z-10 w-52 space-y-3 rounded-xl border border-vc-border bg-vc-sidebar/95 p-3.5 shadow-xl backdrop-blur-sm"
           onContextMenu={(e) => e.preventDefault()}
         >
           {onOwnMicGainChange && (
-            <div>
-              <div className="mb-1.5 flex items-center justify-between text-[11px] text-vc-text-muted">
-                <span>Seu volume pros outros</span>
-                <span>{Math.round((ownMicGain ?? 1) * 100)}%</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={2}
-                step={0.05}
-                value={ownMicGain ?? 1}
-                onChange={(e) => onOwnMicGainChange(Number(e.target.value))}
-                className="w-full accent-vc-accent"
-                aria-label="Seu volume pros outros"
-              />
-            </div>
+            <VolumeSlider
+              icon={<IconMicrophone size={13} className="shrink-0" />}
+              label="Seu volume pros outros"
+              value={ownMicGain ?? 1}
+              onChange={onOwnMicGainChange}
+            />
           )}
           {onMicVolumeChange && (
-            <div className={onVolumeChange ? "mb-2.5" : ""}>
-              <div className="mb-1.5 flex items-center justify-between text-[11px] text-vc-text-muted">
-                <span>Volume do usuário</span>
-                <span>{Math.round((micVolume ?? 1) * 100)}%</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={2}
-                step={0.05}
-                value={micVolume ?? 1}
-                onChange={(e) => onMicVolumeChange(Number(e.target.value))}
-                className="w-full accent-vc-accent"
-                aria-label="Volume do usuário"
-              />
-            </div>
+            <VolumeSlider
+              icon={<IconMicrophone size={13} className="shrink-0" />}
+              label="Volume do usuário"
+              value={micVolume ?? 1}
+              onChange={onMicVolumeChange}
+            />
           )}
           {onVolumeChange && (
-            <div>
-              <div className="mb-1.5 flex items-center justify-between text-[11px] text-vc-text-muted">
-                <span>Volume da transmissão</span>
-                <span>{Math.round((volume ?? 1) * 100)}%</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={2}
-                step={0.05}
-                value={volume ?? 1}
-                onChange={(e) => onVolumeChange(Number(e.target.value))}
-                className="w-full accent-vc-accent"
-                aria-label="Volume da transmissão"
-              />
-            </div>
+            <VolumeSlider
+              icon={<IconScreenShare size={13} className="shrink-0" />}
+              label="Volume da transmissão"
+              value={volume ?? 1}
+              onChange={onVolumeChange}
+            />
           )}
         </div>
       )}

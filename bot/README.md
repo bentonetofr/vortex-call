@@ -7,26 +7,19 @@ falando exatamente o mesmo protocolo de sinalização que o navegador usa
 (`src/lib/useVoiceCall.ts`), então pro resto do app ele é só mais uma
 pessoa na call.
 
-**Não toca YouTube nem Spotify** — só links diretos de áudio (mp3, stream,
-arquivo `.ogg`/`.wav`, rádio online, etc). Isso é proposital, não uma
-limitação técnica que dê pra contornar depois:
+Aceita vídeos públicos do YouTube (via `yt-dlp`) e links diretos de áudio
+(mp3, stream, `.ogg`, `.wav`, rádio online etc.). Use apenas conteúdo que
+você tem autorização para reproduzir. Spotify não é aceito porque não
+fornece um fluxo de áudio bruto para esse tipo de reprodução.
 
-- **YouTube**: raspar áudio de lá (via `yt-dlp` e afins) viola os termos de
-  uso do YouTube — não é sobre escala (6 amigos vs. milhões), é não
-  construir uma ferramenta cuja função é contornar os termos de um
-  serviço.
-- **Spotify**: isso nem é possível de verdade. O Spotify não expõe áudio
-  bruto pra ninguém — a única integração oficial (Web Playback SDK) só
-  controla remotamente um player que já tem sessão Premium logada, não dá
-  pra "pegar" o áudio pra tocar em outro lugar.
-
-Pra tocar suas próprias músicas, suba os arquivos em algum lugar com link
-direto — o bucket `avatars` do Supabase Storage (já usado pelas fotos de
-perfil) serve, ou qualquer outro host de arquivo.
+Este não é um bot Discord: as salas de voz pertencem ao próprio Vortex
+Call e usam Supabase Realtime + WebRTC (`werift`). Por isso não há motivo
+para instalar `discord.js` ou `@discordjs/voice`; o bot já entra na sala do
+usuário pelo protocolo nativo do projeto.
 
 ## Comandos (digitados em qualquer canal de texto)
 
-- `m!play <url>` — toca um link direto de áudio na sua sala de voz atual
+- `m!play <url>` — toca um vídeo do YouTube ou link direto de áudio na sua sala de voz atual
 - `m!skip` — pula a faixa
 - `m!stop` — limpa a fila e sai da sala
 - `m!fila` — mostra o que está tocando
@@ -52,7 +45,24 @@ Dica: dá pra logar no vortex-call normalmente com esse e-mail/senha (numa
 aba anônima) e usar a tela de configurações de perfil já existente pra dar
 uma foto pro bot também — não precisa de ferramenta nenhuma extra pra isso.
 
-## 2. Rode localmente pra testar
+## 2. Instale FFmpeg e yt-dlp
+
+Os dois executáveis precisam estar no `PATH`. Se estiverem em outro lugar,
+defina os caminhos completos em `FFMPEG_PATH` e `YTDLP_PATH` no `.env`.
+
+- Windows: instale FFmpeg e `yt-dlp` pelo gerenciador de pacotes de sua
+  preferência e abra um terminal novo depois da instalação.
+- Ubuntu/Debian: instale `ffmpeg` pelo gerenciador do sistema e siga o
+  método recomendado pelo projeto `yt-dlp` para obter uma versão atual.
+- macOS: ambos estão disponíveis pelo Homebrew.
+
+O bot verifica as duas dependências ao iniciar e encerra com uma mensagem
+clara se alguma estiver ausente. Mantenha o `yt-dlp` atualizado, pois o
+YouTube muda com frequência. Para vídeos que exigem sessão (idade ou
+região), `YTDLP_COOKIES_PATH` pode apontar para um arquivo de cookies no
+formato Netscape; não versione esse arquivo.
+
+## 3. Rode localmente pra testar
 
 ```bash
 cd bot
@@ -62,10 +72,14 @@ cp .env.example .env
 npm run dev
 ```
 
-Precisa do [ffmpeg](https://ffmpeg.org/) instalado e no PATH. No Windows,
-`winget install ffmpeg`; no Mac, `brew install ffmpeg`.
+Antes de conectar ao Supabase, confira o código e os testes:
 
-## 3. Hospede de graça, 24h no ar
+```bash
+npm run build
+npm test
+```
+
+## 4. Hospede 24h no ar
 
 A Vercel não serve pra isso (funções são sob demanda, esse processo
 precisa ficar sempre ligado). A opção realmente gratuita para sempre é uma
@@ -82,6 +96,7 @@ VM da **Oracle Cloud Free Tier**:
 
 ```bash
 sudo apt update && sudo apt install -y ffmpeg nodejs npm git
+# instale também uma versão atual do yt-dlp conforme a documentação oficial
 ```
 
 5. Copie a pasta `bot/` pra lá (via `git clone` do repo, ou `scp`) e repita

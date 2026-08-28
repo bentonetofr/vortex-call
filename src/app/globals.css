@@ -37,3 +37,63 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
+
+/* Custom range-input look for volume sliders (ParticipantTile's volume
+   panel) — the browser default is a thin, barely-visible track. The
+   filled portion is painted via an inline `background` gradient set from
+   JS (percentage depends on the current value), so the track styling here
+   stays transparent and just defines the shape/thumb. */
+.vc-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+}
+
+.vc-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.vc-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.vc-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: var(--color-vc-accent);
+  border: 2px solid var(--color-vc-sidebar);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.vc-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.vc-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-vc-accent);
+  border: 2px solid var(--color-vc-sidebar);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.vc-slider::-moz-range-thumb:hover {
+  transform: scale(1.15);
+}

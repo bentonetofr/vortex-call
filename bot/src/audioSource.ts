@@ -2,6 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "child_process";
 import { createSocket, type Socket } from "dgram";
 import { MediaStreamTrack, RtpPacket } from "werift";
 import { config } from "./config.js";
+import { classifyAudioInput } from "./audioInput.js";
 
 // Matches what the RTCPeerConnection in voiceConnection.ts declares as its
 // Opus payload type — ffmpeg's own RTP muxer picks its own number, so
@@ -17,7 +18,11 @@ export const OPUS_PAYLOAD_TYPE = 111;
 // just plumbing.
 export class AudioSource {
   readonly track = new MediaStreamTrack({ kind: "audio" });
-  private ffmpeg: ChildProcessWithoutNullStreams | null = null;
+  private active: {
+    ffmpeg: ChildProcessWithoutNullStreams;
+    extractor: ChildProcessWithoutNullStreams | null;
+    stopped: boolean;
+  } | null = null;
   private udp: Socket = createSocket("udp4");
   private port: number | null = null;
   private ready: Promise<void>;
@@ -47,11 +52,28 @@ export class AudioSource {
     this.stop();
     await this.ready;
 
+    const input = classifyAudioInput(source);
+
     return new Promise((resolve, reject) => {
+      const extractor =
+        input.kind === "youtube"
+          ? spawn(config.ytDlpPath, [
+              "--no-playlist",
+              "--no-progress",
+              "--no-warnings",
+              "--format",
+              "bestaudio[acodec=opus]/bestaudio/best",
+              ...(config.ytDlpCookiesPath ? ["--cookies", config.ytDlpCookiesPath] : []),
+              "--output",
+              "-",
+              "--",
+              input.url,
+            ])
+          : null;
       const ffmpeg = spawn(config.ffmpegPath, [
         "-re",
         "-i",
-        source,
+        input.kind === "youtube" ? "pipe:0" : input.url,
         "-vn",
         "-acodec",
         "libopus",
@@ -65,33 +87,70 @@ export class AudioSource {
         "rtp",
         `rtp://127.0.0.1:${this.port}`,
       ]);
-      this.ffmpeg = ffmpeg;
+      const playback = { ffmpeg, extractor, stopped: false };
+      this.active = playback;
 
-      let stderrTail = "";
+      if (extractor) extractor.stdout.pipe(ffmpeg.stdin);
+
+      let ffmpegStderr = "";
+      let extractorStderr = "";
+      let settled = false;
+      const finish = (error?: Error) => {
+        if (settled) return;
+        settled = true;
+        extractor?.stdout.unpipe(ffmpeg.stdin);
+        if (this.active === playback) this.active = null;
+        if (error) reject(error);
+        else resolve();
+      };
+
       ffmpeg.stderr.on("data", (chunk: Buffer) => {
-        stderrTail = (stderrTail + chunk.toString()).slice(-2000);
+        ffmpegStderr = (ffmpegStderr + chunk.toString()).slice(-2000);
+      });
+      extractor?.stderr.on("data", (chunk: Buffer) => {
+        extractorStderr = (extractorStderr + chunk.toString()).slice(-2000);
+      });
+      ffmpeg.stdin.on("error", (err: NodeJS.ErrnoException) => {
+        if (err.code !== "EPIPE" && !playback.stopped) {
+          finish(new Error(`falha ao enviar o audio ao FFmpeg: ${err.message}`));
+        }
       });
 
       ffmpeg.on("exit", (code, signal) => {
-        this.ffmpeg = null;
-        if (signal === "SIGTERM" || signal === "SIGKILL") {
-          resolve(); // stopped intentionally (skip/stop/next track)
+        if (extractor?.exitCode === null) extractor.kill("SIGTERM");
+        if (playback.stopped || signal === "SIGTERM" || signal === "SIGKILL") {
+          finish();
         } else if (code === 0) {
-          resolve(); // finished playing normally
+          finish();
         } else {
-          reject(new Error(`ffmpeg exited with code ${code}: ${stderrTail.slice(-300)}`));
+          const details = extractorStderr || ffmpegStderr;
+          finish(new Error(`falha ao decodificar o audio (codigo ${code}): ${details.slice(-300)}`));
         }
       });
 
       ffmpeg.on("error", (err) => {
-        this.ffmpeg = null;
-        reject(err);
+        extractor?.kill("SIGTERM");
+        finish(new Error(`nao foi possivel iniciar o FFmpeg: ${err.message}`));
+      });
+
+      extractor?.on("error", (err) => {
+        ffmpeg.kill("SIGTERM");
+        finish(new Error(`nao foi possivel iniciar o yt-dlp: ${err.message}`));
+      });
+      extractor?.on("exit", (code, signal) => {
+        if (playback.stopped || signal === "SIGTERM" || signal === "SIGKILL" || code === 0) return;
+        ffmpeg.kill("SIGTERM");
+        finish(new Error(`o YouTube recusou ou nao encontrou o video: ${extractorStderr.slice(-300)}`));
       });
     });
   }
 
   stop(): void {
-    this.ffmpeg?.kill("SIGTERM");
-    this.ffmpeg = null;
+    if (!this.active) return;
+    const playback = this.active;
+    playback.stopped = true;
+    playback.extractor?.kill("SIGTERM");
+    playback.ffmpeg.kill("SIGTERM");
+    this.active = null;
   }
 }

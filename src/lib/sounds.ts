@@ -34,11 +34,11 @@ export function playLeaveSound() {
 }
 
 export function playPeerJoinSound() {
-  playTone(getAudioContext().currentTime, 784, 0.09, 0.08);
+  playTone(getAudioContext().currentTime, 784, 0.1, 0.18);
 }
 
 export function playPeerLeaveSound() {
-  playTone(getAudioContext().currentTime, 392, 0.1, 0.08);
+  playTone(getAudioContext().currentTime, 392, 0.11, 0.16);
 }
 
 export function playMuteSound() {

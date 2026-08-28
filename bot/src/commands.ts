@@ -2,6 +2,7 @@ import { supabase, type BotIdentity } from "./supabaseClient.js";
 import { postMessage } from "./chat.js";
 import type { Player } from "./player.js";
 import type { RosterWatcher } from "./roster.js";
+import { InvalidAudioUrlError } from "./audioInput.js";
 
 interface MessageRow {
   id: string;
@@ -14,7 +15,7 @@ const PREFIX = "m!";
 
 const HELP = [
   "**Comandos:**",
-  "`m!play <url>` — toca um link direto de áudio (mp3, stream, etc) na sua sala de voz atual",
+  "`m!play <url>` — toca um video do YouTube ou link direto de audio na sua sala de voz atual",
   "`m!skip` — pula a faixa atual",
   "`m!stop` — limpa a fila e sai da sala",
   "`m!fila` — mostra o que está tocando",
@@ -40,7 +41,7 @@ export function startCommandListener(bot: BotIdentity, player: Player, roster: R
           case "play":
           case "tocar": {
             if (!arg) {
-              await reply("Manda um link direto de áudio: `m!play <url>`");
+              await reply("Envie um link do YouTube ou de audio: `m!play <url>`");
               return;
             }
             const voiceChannelId = roster.channelOf(row.author_id);
@@ -48,7 +49,13 @@ export function startCommandListener(bot: BotIdentity, player: Player, roster: R
               await reply("Você precisa estar numa sala de voz primeiro.");
               return;
             }
-            await player.enqueue(voiceChannelId, row.channel_id, arg);
+            try {
+              await player.enqueue(voiceChannelId, row.channel_id, arg);
+            } catch (err) {
+              const message =
+                err instanceof InvalidAudioUrlError ? err.message : "Ocorreu um erro ao adicionar esse link.";
+              await reply(message);
+            }
             return;
           }
           case "skip":
