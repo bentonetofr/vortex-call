@@ -1,4 +1,4 @@
-import { RTCPeerConnection, RTCRtpCodecParameters, type MediaStreamTrack } from "werift";
+import { MediaStream, RTCPeerConnection, RTCRtpCodecParameters, type MediaStreamTrack } from "werift";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase, type BotIdentity } from "./supabaseClient.js";
 import { fetchIceServers } from "./iceServers.js";
@@ -36,11 +36,17 @@ export class VoiceConnection {
   private makingOffer = new Map<string, boolean>();
   private ignoreOffer = new Map<string, boolean>();
   private iceServers: Awaited<ReturnType<typeof fetchIceServers>> = [];
+  private audioStream: MediaStream;
 
   constructor(
     private bot: BotIdentity,
     private audioTrack: MediaStreamTrack,
-  ) {}
+  ) {
+    // Supplying a MediaStream makes the SDP include an msid. The browser
+    // consumes event.streams[0], so a streamless transceiver is inaudible in
+    // the Vortex Call UI even though RTP packets are reaching the peer.
+    this.audioStream = new MediaStream([audioTrack]);
+  }
 
   async join(channelId: string): Promise<void> {
     if (this.channel) this.leave();
@@ -116,7 +122,10 @@ export class VoiceConnection {
     this.makingOffer.set(peerId, false);
     this.ignoreOffer.set(peerId, false);
 
-    pc.addTransceiver(this.audioTrack, { direction: "sendonly" });
+    pc.addTransceiver(this.audioTrack, {
+      direction: "sendonly",
+      streams: [this.audioStream],
+    });
 
     pc.onnegotiationneeded = async () => {
       try {
