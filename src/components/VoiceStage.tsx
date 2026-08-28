@@ -30,7 +30,7 @@ export function VoiceStage({
   const peerList = Object.entries(peers);
 
   return (
-    <div className="grid flex-1 auto-rows-fr grid-cols-1 gap-3 p-3 md:grid-cols-2 md:gap-4 md:p-6">
+    <div className="grid flex-1 auto-rows-min content-start grid-cols-1 gap-3 p-3 md:grid-cols-2 md:gap-4 md:p-6">
       <ParticipantTile
         name={`${currentMember.name} (você)`}
         color={currentMember.color}
