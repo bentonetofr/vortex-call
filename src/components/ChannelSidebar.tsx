@@ -6,6 +6,12 @@ import { Avatar } from "./Avatar";
 import { VoiceControls } from "./VoiceControls";
 import { VoiceOccupantRow } from "./VoiceOccupantRow";
 
+// Preview avatars for a voice channel's occupants (shown before joining):
+// only the bottom PREVIEW_VISIBLE_FRACTION of the circle pokes out, the
+// rest is clipped above it.
+const PREVIEW_AVATAR_SIZE = 16;
+const PREVIEW_VISIBLE_FRACTION = 0.85;
+
 interface ChannelSidebarProps {
   channels: Channel[];
   currentMember: Member;
@@ -139,13 +145,16 @@ export function ChannelSidebar({
                         key={occupant.userId}
                         title={occupant.name}
                         className="flex items-end justify-center overflow-hidden rounded-b-full"
-                        style={{ width: 16, height: 8 }}
+                        style={{
+                          width: PREVIEW_AVATAR_SIZE,
+                          height: PREVIEW_AVATAR_SIZE * PREVIEW_VISIBLE_FRACTION,
+                        }}
                       >
                         <Avatar
                           name={occupant.name}
                           color={occupant.color}
                           avatarUrl={occupant.avatarUrl}
-                          size={16}
+                          size={PREVIEW_AVATAR_SIZE}
                         />
                       </div>
                     ))}
