@@ -614,9 +614,20 @@ export function useVoiceCall(member: Member) {
           videoConstraints.height = { ideal: options.height };
         }
 
+        // When sharing a tab that itself plays other peers' voices (this
+        // site, via PeerAudioPlayer's <audio> elements), getDisplayMedia's
+        // audio capture picks that playback up along with everything else —
+        // so a peer's own voice, coming out of the sharer's speakers, gets
+        // captured and sent right back to them over the mesh. Chrome's
+        // suppressLocalAudioPlayback constraint (not yet in TS's DOM lib)
+        // mutes local tab playback for the sharer while capturing, which
+        // stops that loop; other browsers just ignore the unknown constraint.
+        const audioConstraints: MediaTrackConstraints & { suppressLocalAudioPlayback?: boolean } = {
+          suppressLocalAudioPlayback: true,
+        };
         const stream = await navigator.mediaDevices.getDisplayMedia({
           video: videoConstraints,
-          audio: options.withAudio,
+          audio: options.withAudio ? audioConstraints : false,
         });
 
         const videoTrack = stream.getVideoTracks()[0];
