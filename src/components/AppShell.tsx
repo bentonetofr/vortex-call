@@ -64,7 +64,7 @@ export function AppShell({ member, onUpdateMember, onSignOut }: AppShellProps) {
           peers={voiceCall.peers}
           micVolumes={micVolumes}
           screenVolumes={screenVolumes}
-          deafened={voiceCall.deafened}
+          deafened={voiceCall.deafened || voiceCall.screenShareAudioActive}
         />
       )}
 
