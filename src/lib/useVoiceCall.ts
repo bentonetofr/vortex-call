@@ -190,15 +190,6 @@ export function useVoiceCall(member: Member) {
   // everyone else. Persists across calls like noiseSuppression does.
   const [micVolume, setMicVolumeState] = useState(1);
   const [mediaMode, setMediaMode] = useState<MediaMode>("none");
-  // True while our own screen-share audio track is live. Desktop/tab audio
-  // capture is OS-level — it picks up whatever this machine is actually
-  // rendering to its output device, which includes peer voices we're
-  // playing back locally. Without muting that local playback while sharing,
-  // a peer's own voice loops right back to them through the captured audio.
-  // There's no way to exclude just that source from the capture, so this is
-  // the only reliable fix regardless of which surface (tab/window/screen)
-  // the user picks in the browser's share dialog.
-  const [screenShareAudioActive, setScreenShareAudioActive] = useState(false);
   const [localVideoStream, setLocalVideoStream] = useState<MediaStream | null>(null);
   const [localAudioStream, setLocalAudioStream] = useState<MediaStream | null>(null);
   const [peers, setPeers] = useState<Record<string, PeerCallState>>({});
@@ -375,7 +366,6 @@ export function useVoiceCall(member: Member) {
     screenAudioTrackRef.current?.stop();
     screenAudioTrackRef.current = null;
     screenShareOptionsRef.current = null;
-    setScreenShareAudioActive(false);
     if (rtcChannelRef.current) {
       getSupabase().removeChannel(rtcChannelRef.current);
       rtcChannelRef.current = null;
@@ -584,7 +574,6 @@ export function useVoiceCall(member: Member) {
   const setScreenAudioTrack = useCallback((track: MediaStreamTrack | null) => {
     screenAudioTrackRef.current?.stop();
     screenAudioTrackRef.current = track;
-    setScreenShareAudioActive(track !== null);
 
     connectionsRef.current.forEach((pc, peerId) => {
       const existingSender = screenAudioSendersRef.current.get(peerId);
@@ -667,7 +656,6 @@ export function useVoiceCall(member: Member) {
     noiseSuppression,
     micVolume,
     mediaMode,
-    screenShareAudioActive,
     peers,
     localVideoStream,
     localAudioStream,
